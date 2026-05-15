@@ -14,7 +14,8 @@ an example of which is shown bellow:
 {"button":"8","name":"View 8","zoomNm":250,"centerLat":36.692194444444,"centerLon":3.2151111111111},
 {"button":"VIEW1","name":"View 1","zoomNm":120,"centerLat":36.692194444444,"centerLon":3.2151111111111},
 {"button":"VIEW2","name":"View 2","zoomNm":300,"centerLat":36.692194444444,"centerLon":3.2151111111111}
-]```
+]
+```
 
 this defines the views each button will go to when they are clicked 
 
