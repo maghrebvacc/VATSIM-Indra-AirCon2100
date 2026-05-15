@@ -1,0 +1,20 @@
+{
+  "contacts": [
+    {
+      "name": "Heathrow TWR",
+      "station": "EGLL_TWR"
+    },
+    {
+      "name": "Heathrow GND",
+      "station": "EGLL_GND"
+    },
+    {
+      "name": "London Control",
+      "station": "LON_S_CTR"
+    },
+    {
+      "name": "Director",
+      "station": "EGLL_APP"
+    }
+  ]
+}

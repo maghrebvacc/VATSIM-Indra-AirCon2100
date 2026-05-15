@@ -1,7 +1,7 @@
 @echo off
 echo Compiling Indra APC Plugin...
 
-set SOURCES=src\Plugin.cpp src\Screen.cpp src\Storage.cpp
+set SOURCES=src\Plugin.cpp src\Screen.cpp src\Storage.cpp src\VacsManager.cpp
 set OUTPUT=build\IndraApc.dll
 set ES_LIB=
 

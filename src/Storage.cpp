@@ -147,4 +147,53 @@ void saveViewToJson(const std::string &button, const ViewDef &view)
     file << "]\n";
 }
 
+
+// ---------------------------------------------------------------------------
+// VACS contact loading
+// ---------------------------------------------------------------------------
+// Parses settings.json using the same hand-rolled JSON helpers already in
+// this file — no third-party JSON library required.
+// Expected format:
+//   { "contacts": [ {"name":"...", "station":"..."}, ... ] }
+
+std::vector<Contact> loadContactsJson(const std::string &filename)
+{
+    std::vector<Contact> result;
+
+    std::string json = readFile(dataDirectory() + "\\" + filename);
+    if (json.empty()) return result;
+
+    // Find the "contacts" array
+    std::string arrayToken = "\"contacts\"";
+    std::size_t arrayPos = json.find(arrayToken);
+    if (arrayPos == std::string::npos) return result;
+
+    std::size_t bracketOpen = json.find('[', arrayPos);
+    if (bracketOpen == std::string::npos) return result;
+
+    std::size_t bracketClose = json.find(']', bracketOpen);
+    if (bracketClose == std::string::npos) return result;
+
+    std::string arrayBody = json.substr(bracketOpen, bracketClose - bracketOpen + 1);
+
+    // Iterate over each { ... } object inside the array
+    std::size_t p = 0;
+    while ((p = arrayBody.find('{', p)) != std::string::npos)
+    {
+        std::size_t e = arrayBody.find('}', p + 1);
+        if (e == std::string::npos) break;
+
+        std::string obj = arrayBody.substr(p, e - p + 1);
+        Contact c;
+        if (jsonString(obj, "name",    c.name)   &&
+            jsonString(obj, "station", c.station) &&
+            !c.name.empty() && !c.station.empty())
+        {
+            result.push_back(c);
+        }
+        p = e + 1;
+    }
+    return result;
+}
+
 } // namespace Indra
