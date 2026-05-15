@@ -55,6 +55,7 @@ public:
         RegisterTagItemFunction("Messages Center", FN_MESSAGES_CENTER);
         RegisterTagItemFunction("Messages Send",   FN_MESSAGES_SEND);
         RegisterTagItemFunction("Messages New DM", FN_MESSAGES_NEW_DM);
+        RegisterTagItemFunction("VACS Custom Call", FN_VACS_CUSTOM);
     }
 
     ~IndraApcPlugin() override {}
@@ -72,9 +73,6 @@ public:
     bool OnCompileCommand(const char *cmd) override
     {
         if (!startsWith(cmd, ".indra")) return false;
-        DisplayUserMessage(kPluginName, "INDRA",
-            "Indra APC Plugin v0.1.5 three-row bottom bar active.",
-            true, true, true, false, false);
         return true;
     }
 
@@ -131,15 +129,9 @@ public:
         }
         else if (functionId == FN_FINDER && itemString && *itemString)
         {
-            DisplayUserMessage(kPluginName, "INDRA",
-                ("Finder: " + std::string(itemString)).c_str(),
-                true, true, true, false, false);
         }
         else if (functionId == FN_SSRF && itemString && *itemString)
         {
-            DisplayUserMessage(kPluginName, "INDRA",
-                ("SSR F: " + std::string(itemString)).c_str(),
-                true, true, true, false, false);
         }
     }
 

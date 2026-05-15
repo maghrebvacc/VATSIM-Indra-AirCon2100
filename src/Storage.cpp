@@ -6,27 +6,297 @@
 namespace Indra
 {
 
+namespace
+{
+constexpr const char *kVacsHost = "127.0.0.1";
+constexpr int         kVacsPort = 9600;
+constexpr const char *kVacsPath = "/ws";
+
+class WinsockSession
+{
+public:
+    WinsockSession() : ok_(false)
+    {
+        WSADATA data;
+        ok_ = (WSAStartup(MAKEWORD(2, 2), &data) == 0);
+    }
+
+    ~WinsockSession()
+    {
+        if (ok_) WSACleanup();
+    }
+
+    bool ok() const { return ok_; }
+
+private:
+    bool ok_;
+};
+
+std::string escapeJsonString(const std::string &value)
+{
+    return nlohmann::json(value).dump();
+}
+
+std::string makeSourceJson(const nlohmann::json &session)
+{
+    auto clientIt = session.find("clientId");
+    if (clientIt == session.end() || !clientIt->is_string() || clientIt->get<std::string>().empty())
+        return "{}";
+
+    nlohmann::json source;
+    source["clientId"] = clientIt->get<std::string>();
+    return source.dump();
+}
+
+std::string firstIncomingCallId(const nlohmann::json &session)
+{
+    auto it = session.find("incomingCalls");
+    if (it == session.end() || !it->is_array() || it->empty()) return "";
+    const nlohmann::json &call = it->front();
+    auto callId = call.find("callId");
+    return (callId != call.end() && callId->is_string()) ? callId->get<std::string>() : "";
+}
+
+std::string callTargetText(const nlohmann::json &call)
+{
+    auto target = call.find("target");
+    if (target == call.end() || !target->is_object()) return "";
+
+    for (const char *key : {"position", "station", "client"})
+    {
+        auto value = target->find(key);
+        if (value != target->end() && value->is_string())
+            return value->get<std::string>();
+    }
+    return "";
+}
+
+bool outgoingCallDetails(const nlohmann::json &session,
+                         std::string &callId,
+                         std::string &target)
+{
+    auto it = session.find("outgoingCall");
+    if (it == session.end() || !it->is_object()) return false;
+
+    auto id = it->find("callId");
+    if (id == it->end() || !id->is_string()) return false;
+
+    callId = id->get<std::string>();
+    target = callTargetText(*it);
+    return true;
+}
+
+std::string normalizeCallsign(std::string value)
+{
+    value.erase(std::remove_if(value.begin(), value.end(),
+        [](unsigned char c) { return std::isspace(c); }), value.end());
+    std::transform(value.begin(), value.end(), value.begin(),
+        [](unsigned char c) { return static_cast<char>(std::toupper(c)); });
+    return value;
+}
+
+std::string g_activeDataPosition;
+
+nlohmann::json findPositionNode(const nlohmann::json &root, const std::string &position)
+{
+    if (!root.is_object() || position.empty()) return nullptr;
+
+    auto exact = root.find(position);
+    if (exact != root.end()) return *exact;
+
+    std::string wanted = normalizeCallsign(position);
+    for (auto it = root.begin(); it != root.end(); ++it)
+    {
+        if (normalizeCallsign(it.key()) == wanted)
+            return *it;
+    }
+    return nullptr;
+}
+
+std::vector<ViewDef> parseViewsArray(const nlohmann::json &items)
+{
+    std::vector<ViewDef> views;
+    if (!items.is_array()) return views;
+
+    for (const auto &item : items)
+    {
+        if (!item.is_object()) continue;
+        ViewDef v;
+        v.button = item.value("button", "");
+        v.name = item.value("name", "");
+        v.zoomNm = item.value("zoomNm", 120);
+        if (item.contains("centerLat") && item.contains("centerLon"))
+        {
+            v.centerLat = item.value("centerLat", 0.0);
+            v.centerLon = item.value("centerLon", 0.0);
+            v.hasCenter = true;
+        }
+        if (!v.button.empty()) views.push_back(v);
+    }
+    return views;
+}
+
+enum class ScopedParseKind
+{
+    NoData,
+    ScopedNoMatch,
+    ScopedMatch,
+    LegacyRoot
+};
+
+struct ViewsParseResult
+{
+    ScopedParseKind kind = ScopedParseKind::NoData;
+    std::vector<ViewDef> views;
+};
+
+ViewsParseResult parseViewsJsonText(const std::string &text)
+{
+    ViewsParseResult result;
+    if (text.empty()) return result;
+
+    try
+    {
+        nlohmann::json root = nlohmann::json::parse(text);
+        if (root.is_array())
+        {
+            result.kind = ScopedParseKind::LegacyRoot;
+            result.views = parseViewsArray(root);
+            return result;
+        }
+
+        nlohmann::json selected = findPositionNode(root, g_activeDataPosition);
+        if (selected.is_array())
+        {
+            result.kind = ScopedParseKind::ScopedMatch;
+            result.views = parseViewsArray(selected);
+            return result;
+        }
+        if (selected.is_object())
+        {
+            auto views = selected.find("views");
+            if (views != selected.end())
+            {
+                result.kind = ScopedParseKind::ScopedMatch;
+                result.views = parseViewsArray(*views);
+                return result;
+            }
+        }
+
+        auto legacy = root.find("views");
+        if (legacy != root.end())
+        {
+            result.kind = ScopedParseKind::LegacyRoot;
+            result.views = parseViewsArray(*legacy);
+            return result;
+        }
+
+        if (root.is_object() && !g_activeDataPosition.empty())
+            result.kind = ScopedParseKind::ScopedNoMatch;
+    }
+    catch (const nlohmann::json::exception &)
+    {
+    }
+
+    return result;
+}
+
+std::vector<Contact> parseContactsArray(const nlohmann::json &items)
+{
+    std::vector<Contact> result;
+    if (!items.is_array()) return result;
+
+    for (const auto &item : items)
+    {
+        if (!item.is_object()) continue;
+        auto name = item.find("name");
+        auto station = item.find("station");
+        if (name == item.end() || station == item.end() ||
+            !name->is_string() || !station->is_string())
+            continue;
+
+        Contact c;
+        c.name = name->get<std::string>();
+        c.station = station->get<std::string>();
+        if (!c.name.empty() && !c.station.empty())
+            result.push_back(c);
+    }
+    return result;
+}
+
+struct ContactsParseResult
+{
+    ScopedParseKind kind = ScopedParseKind::NoData;
+    std::vector<Contact> contacts;
+};
+
+ContactsParseResult parseContactsJsonText(const std::string &text)
+{
+    ContactsParseResult result;
+    if (text.empty()) return result;
+
+    try
+    {
+        nlohmann::json root = nlohmann::json::parse(text);
+        nlohmann::json selected = findPositionNode(root, g_activeDataPosition);
+        if (selected.is_object())
+        {
+            auto contacts = selected.find("contacts");
+            if (contacts != selected.end())
+            {
+                result.kind = ScopedParseKind::ScopedMatch;
+                result.contacts = parseContactsArray(*contacts);
+                return result;
+            }
+        }
+
+        auto contacts = root.find("contacts");
+        if (contacts != root.end())
+        {
+            result.kind = ScopedParseKind::LegacyRoot;
+            result.contacts = parseContactsArray(*contacts);
+            return result;
+        }
+
+        if (root.is_object() && !g_activeDataPosition.empty())
+            result.kind = ScopedParseKind::ScopedNoMatch;
+    }
+    catch (const nlohmann::json::exception &)
+    {
+    }
+
+    return result;
+}
+
+} // namespace
+
 std::string moduleDirectory()
 {
-    HMODULE module = nullptr;
-    char path[MAX_PATH] = {};
-    GetModuleHandleExA(
-        GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS |
-        GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT,
-        reinterpret_cast<LPCSTR>(&moduleDirectory), &module);
-    GetModuleFileNameA(module, path, MAX_PATH);
-    std::string result(path);
-    std::size_t slash = result.find_last_of("\\/");
-    return slash == std::string::npos ? "." : result.substr(0, slash);
+    static const std::string dir = []() {
+        HMODULE module = nullptr;
+        char path[MAX_PATH] = {};
+        GetModuleHandleExA(
+            GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS |
+            GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT,
+            reinterpret_cast<LPCSTR>(&moduleDirectory), &module);
+        GetModuleFileNameA(module, path, MAX_PATH);
+        std::string result(path);
+        std::size_t slash = result.find_last_of("\\/");
+        return slash == std::string::npos ? std::string(".") : result.substr(0, slash);
+    }();
+    return dir;
 }
 
 std::string dataDirectory()
 {
-    std::string dir = moduleDirectory();
-    std::size_t slash = dir.find_last_of("\\/");
-    std::string leaf = slash == std::string::npos ? dir : dir.substr(slash + 1);
-    if (_stricmp(leaf.c_str(), "build") == 0 && slash != std::string::npos)
-        return dir.substr(0, slash);
+    static const std::string dir = []() {
+        std::string moduleDir = moduleDirectory();
+        std::size_t slash = moduleDir.find_last_of("\\/");
+        std::string leaf = slash == std::string::npos ? moduleDir : moduleDir.substr(slash + 1);
+        if (_stricmp(leaf.c_str(), "build") == 0 && slash != std::string::npos)
+            return moduleDir.substr(0, slash);
+        return moduleDir;
+    }();
     return dir;
 }
 
@@ -37,6 +307,17 @@ std::string readFile(const std::string &path)
     std::ostringstream ss;
     ss << file.rdbuf();
     return ss.str();
+}
+
+std::string readDataFile(const std::string &filename)
+{
+    std::string modulePath = moduleDirectory() + "\\" + filename;
+    std::string text = readFile(modulePath);
+    if (!text.empty()) return text;
+
+    std::string dataPath = dataDirectory() + "\\" + filename;
+    if (_stricmp(modulePath.c_str(), dataPath.c_str()) == 0) return "";
+    return readFile(dataPath);
 }
 
 bool jsonString(const std::string &obj, const char *key, std::string &out)
@@ -66,6 +347,11 @@ bool jsonNumber(const std::string &obj, const char *key, double &out)
     char *end = nullptr;
     out = strtod(obj.c_str() + p, &end);
     return end && end != obj.c_str() + p;
+}
+
+void setActiveDataPosition(const std::string &position)
+{
+    g_activeDataPosition = normalizeCallsign(position);
 }
 
 std::map<std::string, std::string>              g_metars;
@@ -103,14 +389,39 @@ void addChatMessage(const std::string &sender,
 
 std::vector<ViewDef> loadViewsJson(const std::string &filename)
 {
-    std::vector<ViewDef> views;
-    std::string json = readFile(dataDirectory() + "\\" + filename);
+    if (g_activeDataPosition.empty())
+        return {};
+
+    std::string modulePath = moduleDirectory() + "\\" + filename;
+    std::string dataPath = dataDirectory() + "\\" + filename;
+    std::string moduleText = readFile(modulePath);
+    std::string dataText = (_stricmp(modulePath.c_str(), dataPath.c_str()) == 0)
+        ? std::string()
+        : readFile(dataPath);
+
+    ViewsParseResult moduleResult = parseViewsJsonText(moduleText);
+    ViewsParseResult dataResult = parseViewsJsonText(dataText);
+
+    if (moduleResult.kind == ScopedParseKind::ScopedMatch)
+        return moduleResult.views;
+    if (dataResult.kind == ScopedParseKind::ScopedMatch)
+        return dataResult.views;
+    if (moduleResult.kind == ScopedParseKind::ScopedNoMatch ||
+        dataResult.kind == ScopedParseKind::ScopedNoMatch)
+        return {};
+    if (moduleResult.kind == ScopedParseKind::LegacyRoot)
+        return moduleResult.views;
+    if (dataResult.kind == ScopedParseKind::LegacyRoot)
+        return dataResult.views;
+
+    std::string fallbackText = !moduleText.empty() ? moduleText : dataText;
+    std::vector<ViewDef> fallbackViews;
     std::size_t p = 0;
-    while ((p = json.find('{', p)) != std::string::npos)
+    while ((p = fallbackText.find('{', p)) != std::string::npos)
     {
-        std::size_t e = json.find('}', p + 1);
+        std::size_t e = fallbackText.find('}', p + 1);
         if (e == std::string::npos) break;
-        std::string obj = json.substr(p, e - p + 1);
+        std::string obj = fallbackText.substr(p, e - p + 1);
         ViewDef v;
         double  n = 0.0;
         jsonString(obj, "button", v.button);
@@ -118,20 +429,68 @@ std::vector<ViewDef> loadViewsJson(const std::string &filename)
         if (jsonNumber(obj, "centerLat", n)) { v.centerLat = n; v.hasCenter = true; }
         if (jsonNumber(obj, "centerLon", n))   v.centerLon = n;
         if (jsonNumber(obj, "zoomNm",    n))   v.zoomNm    = static_cast<int>(n);
-        if (!v.button.empty()) views.push_back(v);
+        if (!v.button.empty()) fallbackViews.push_back(v);
         p = e + 1;
     }
-    return views;
+    return fallbackViews;
 }
 
 void saveViewToJson(const std::string &button, const ViewDef &view)
 {
-    std::string          path  = dataDirectory() + "\\indra_saved_views.json";
-    std::vector<ViewDef> views = loadViewsJson();
+    if (g_activeDataPosition.empty())
+        return;
+
+    std::string path  = dataDirectory() + "\\indra_saved_views.json";
+    std::string existing = readDataFile("indra_saved_views.json");
+
+    nlohmann::json root;
+    try
+    {
+        root = existing.empty() ? nlohmann::json::object() : nlohmann::json::parse(existing);
+    }
+    catch (const nlohmann::json::exception &)
+    {
+        root = nlohmann::json::object();
+    }
+
+    bool scoped = !g_activeDataPosition.empty() && !root.is_array();
+    nlohmann::json *arrayNode = nullptr;
+    if (scoped)
+    {
+        nlohmann::json &positionNode = root[g_activeDataPosition];
+        if (!positionNode.is_object()) positionNode = nlohmann::json::object();
+        if (!positionNode["views"].is_array()) positionNode["views"] = nlohmann::json::array();
+        arrayNode = &positionNode["views"];
+    }
+
+    std::vector<ViewDef> views = scoped ? parseViewsArray(*arrayNode) : loadViewsJson();
     bool found = false;
     for (auto &v : views)
         if (v.button == button) { v = view; found = true; break; }
     if (!found) views.push_back(view);
+
+    if (scoped)
+    {
+        *arrayNode = nlohmann::json::array();
+        for (const auto &v : views)
+        {
+            nlohmann::json item;
+            item["button"] = v.button;
+            item["name"] = v.name;
+            item["zoomNm"] = v.zoomNm;
+            if (v.hasCenter)
+            {
+                item["centerLat"] = v.centerLat;
+                item["centerLon"] = v.centerLon;
+            }
+            arrayNode->push_back(item);
+        }
+
+        std::ofstream file(path.c_str());
+        if (file) file << root.dump(2) << "\n";
+        return;
+    }
+
     std::ofstream file(path.c_str());
     if (!file) return;
     file << "[\n";
@@ -153,6 +512,7 @@ void saveViewToJson(const std::string &button, const ViewDef &view)
 
 std::vector<Contact> loadContactsJson(const std::string &filename)
 {
+<<<<<<< Updated upstream
     std::vector<Contact> result;
 
     std::string json = readFile(dataDirectory() + "\\" + filename);
@@ -199,17 +559,196 @@ void vacsCall(const std::string &station)
     if (sock == INVALID_SOCKET) return;
 
     DWORD timeout = 1000;
+=======
+    if (g_activeDataPosition.empty())
+        return {};
+
+    std::string modulePath = moduleDirectory() + "\\" + filename;
+    std::string dataPath = dataDirectory() + "\\" + filename;
+    std::string moduleText = readFile(modulePath);
+    std::string dataText = (_stricmp(modulePath.c_str(), dataPath.c_str()) == 0)
+        ? std::string()
+        : readFile(dataPath);
+
+    static std::string cachedFilename;
+    static std::string cachedPosition;
+    static std::string cachedModuleText;
+    static std::string cachedDataText;
+    static std::vector<Contact> cachedContacts;
+    if (cachedFilename == filename &&
+        cachedPosition == g_activeDataPosition &&
+        cachedModuleText == moduleText &&
+        cachedDataText == dataText)
+        return cachedContacts;
+
+    cachedFilename = filename;
+    cachedPosition = g_activeDataPosition;
+    cachedModuleText = moduleText;
+    cachedDataText = dataText;
+
+    ContactsParseResult moduleResult = parseContactsJsonText(moduleText);
+    ContactsParseResult dataResult = parseContactsJsonText(dataText);
+
+    if (moduleResult.kind == ScopedParseKind::ScopedMatch)
+        cachedContacts = moduleResult.contacts;
+    else if (dataResult.kind == ScopedParseKind::ScopedMatch)
+        cachedContacts = dataResult.contacts;
+    else if (moduleResult.kind == ScopedParseKind::ScopedNoMatch ||
+             dataResult.kind == ScopedParseKind::ScopedNoMatch)
+        cachedContacts.clear();
+    else if (moduleResult.kind == ScopedParseKind::LegacyRoot)
+        cachedContacts = moduleResult.contacts;
+    else
+        cachedContacts = dataResult.contacts;
+    return cachedContacts;
+}
+
+VacsManager::VacsManager()
+    : activeCall_(false),
+      nextRequestId_(1)
+{
+}
+
+void VacsManager::StartVacsCall(const std::string &station)
+{
+    std::string target = normalizeCallsign(station);
+    if (target.empty()) return;
+
+    nlohmann::json session;
+    if (!readSession(session)) return;
+
+    std::string source = makeSourceJson(session);
+    if (source == "{}") return;
+
+    std::string args =
+        "{\"target\":{\"position\":" + escapeJsonString(target) +
+        "},\"source\":" + source +
+        ",\"prio\":false}";
+
+    nlohmann::json data;
+    if (invoke("signaling_start_call", args, data) && data.is_string())
+    {
+        activeCallId_ = data.get<std::string>();
+        activeTarget_ = target;
+        activeCall_ = true;
+    }
+}
+
+bool VacsManager::RefreshCallStatus(VacsCallStatus &status)
+{
+    nlohmann::json session;
+    if (!readSession(session))
+    {
+        status.state = activeCall_ ? VacsCallUiState::Active : VacsCallUiState::Idle;
+        status.callId = activeCallId_;
+        status.target = activeTarget_;
+        return false;
+    }
+
+    incomingCallId_ = firstIncomingCallId(session);
+    if (!incomingCallId_.empty())
+    {
+        status.state = VacsCallUiState::IncomingRinging;
+        status.callId = incomingCallId_;
+        status.target.clear();
+        return true;
+    }
+
+    std::string outgoingId;
+    std::string outgoingTarget;
+    if (outgoingCallDetails(session, outgoingId, outgoingTarget))
+    {
+        activeCallId_ = outgoingId;
+        if (!outgoingTarget.empty())
+            activeTarget_ = normalizeCallsign(outgoingTarget);
+        activeCall_ = true;
+        status.state = VacsCallUiState::OutgoingRinging;
+        status.callId = activeCallId_;
+        status.target = activeTarget_;
+        return true;
+    }
+
+    status.state = activeCall_ ? VacsCallUiState::Active : VacsCallUiState::Idle;
+    status.callId = activeCallId_;
+    status.target = activeTarget_;
+    return true;
+}
+
+bool VacsManager::AcceptIncomingCall()
+{
+    VacsCallStatus status;
+    RefreshCallStatus(status);
+    if (incomingCallId_.empty()) return false;
+
+    std::string args = "{\"callId\":" + escapeJsonString(incomingCallId_) + "}";
+    nlohmann::json data;
+    if (!invoke("signaling_accept_call", args, data)) return false;
+
+    activeCallId_ = incomingCallId_;
+    incomingCallId_.clear();
+    activeTarget_.clear();
+    activeCall_ = true;
+    return true;
+}
+
+bool VacsManager::EndCurrentCall()
+{
+    if (activeCallId_.empty()) return false;
+
+    std::string args = "{\"callId\":" + escapeJsonString(activeCallId_) + "}";
+    nlohmann::json data;
+    bool ok = invoke("signaling_end_call", args, data);
+    activeCallId_.clear();
+    incomingCallId_.clear();
+    activeTarget_.clear();
+    activeCall_ = false;
+    return ok;
+}
+
+bool VacsManager::readSession(nlohmann::json &session)
+{
+    return invoke("remote_get_session_state", "{}", session) && session.is_object();
+}
+
+bool VacsManager::invoke(const std::string &command,
+                         const std::string &args,
+                         nlohmann::json &data)
+{
+    static WinsockSession winsock;
+    if (!winsock.ok()) return false;
+
+    SOCKET sock = connectRemote();
+    if (sock == INVALID_SOCKET) return false;
+
+    bool ok = sendRemoteCommand(sock, command, args, data);
+    closesocket(sock);
+    return ok;
+}
+
+SOCKET VacsManager::connectRemote()
+{
+    SOCKET sock = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+    if (sock == INVALID_SOCKET) return INVALID_SOCKET;
+
+    DWORD timeout = 250;
+>>>>>>> Stashed changes
     setsockopt(sock, SOL_SOCKET, SO_SNDTIMEO, reinterpret_cast<const char*>(&timeout), sizeof(timeout));
     setsockopt(sock, SOL_SOCKET, SO_RCVTIMEO, reinterpret_cast<const char*>(&timeout), sizeof(timeout));
 
     sockaddr_in addr = {};
     addr.sin_family = AF_INET;
+<<<<<<< Updated upstream
     addr.sin_port   = htons(static_cast<u_short>(kPort));
     inet_pton(AF_INET, kHost, &addr.sin_addr);
+=======
+    addr.sin_port   = htons(static_cast<u_short>(kVacsPort));
+    inet_pton(AF_INET, kVacsHost, &addr.sin_addr);
+>>>>>>> Stashed changes
 
     if (connect(sock, reinterpret_cast<sockaddr*>(&addr), sizeof(addr)) != 0)
     {
         closesocket(sock);
+<<<<<<< Updated upstream
         return;
     }
 
@@ -222,29 +761,163 @@ void vacsCall(const std::string &station)
         "Upgrade: websocket\r\nConnection: Upgrade\r\n"
         "Sec-WebSocket-Key: %s\r\nSec-WebSocket-Version: 13\r\n\r\n",
         kHost, kPort, key);
+=======
+        return INVALID_SOCKET;
+    }
+
+    char req[512];
+    snprintf(req, sizeof(req),
+        "GET %s HTTP/1.1\r\nHost: %s:%d\r\n"
+        "Upgrade: websocket\r\nConnection: Upgrade\r\n"
+        "Sec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==\r\n"
+        "Sec-WebSocket-Version: 13\r\n\r\n",
+        kVacsPath, kVacsHost, kVacsPort);
+>>>>>>> Stashed changes
     send(sock, req, static_cast<int>(strlen(req)), 0);
 
     char resp[512] = {};
     recv(sock, resp, sizeof(resp) - 1, 0);
+<<<<<<< Updated upstream
     if (!strstr(resp, "101")) { closesocket(sock); return; }
 
     // Masked text frame: {"type":"call","callsign":"<station>"}
     std::string payload = "{\"type\":\"call\",\"callsign\":\"" + station + "\"}";
+=======
+    if (!strstr(resp, "101"))
+    {
+        closesocket(sock);
+        return INVALID_SOCKET;
+    }
+
+    return sock;
+}
+
+bool VacsManager::sendRemoteCommand(SOCKET sock,
+                                    const std::string &command,
+                                    const std::string &args,
+                                    nlohmann::json &data)
+{
+    std::string id = nextId();
+    std::string payload =
+        "{\"type\":\"invoke\",\"id\":" + escapeJsonString(id) +
+        ",\"cmd\":" + escapeJsonString(command) +
+        ",\"args\":" + args + "}";
+
+    if (!sendTextFrame(sock, payload)) return false;
+
+    std::string responseText;
+    if (!readTextFrame(sock, responseText)) return false;
+
+    try
+    {
+        nlohmann::json response = nlohmann::json::parse(responseText);
+        if (response.value("type", "") != "response" ||
+            response.value("id", "") != id ||
+            !response.value("ok", false))
+            return false;
+
+        auto dataIt = response.find("data");
+        data = (dataIt == response.end()) ? nlohmann::json() : *dataIt;
+        return true;
+    }
+    catch (const nlohmann::json::exception &)
+    {
+        return false;
+    }
+}
+
+bool VacsManager::sendTextFrame(SOCKET sock, const std::string &payload)
+{
+>>>>>>> Stashed changes
     size_t len = payload.size();
 
     std::vector<unsigned char> frame;
     frame.push_back(0x81);
+<<<<<<< Updated upstream
     frame.push_back(static_cast<unsigned char>(0x80 | (len <= 125 ? len : 126)));
     if (len > 125) { frame.push_back((len >> 8) & 0xFF); frame.push_back(len & 0xFF); }
+=======
+    if (len <= 125)
+    {
+        frame.push_back(static_cast<unsigned char>(0x80 | len));
+    }
+    else if (len <= 65535)
+    {
+        frame.push_back(0x80 | 126);
+        frame.push_back(static_cast<unsigned char>((len >> 8) & 0xFF));
+        frame.push_back(static_cast<unsigned char>(len & 0xFF));
+    }
+    else
+    {
+        return false;
+    }
+>>>>>>> Stashed changes
 
     unsigned char mask[4] = { 0xAB, 0xCD, 0xEF, 0x01 };
     for (auto m : mask) frame.push_back(m);
     for (size_t i = 0; i < len; ++i)
         frame.push_back(static_cast<unsigned char>(payload[i]) ^ mask[i % 4]);
 
+<<<<<<< Updated upstream
     send(sock, reinterpret_cast<const char*>(frame.data()), static_cast<int>(frame.size()), 0);
     recv(sock, resp, sizeof(resp) - 1, 0);
     closesocket(sock);
+=======
+    int sent = send(sock, reinterpret_cast<const char*>(frame.data()), static_cast<int>(frame.size()), 0);
+    return sent == static_cast<int>(frame.size());
+}
+
+bool VacsManager::readTextFrame(SOCKET sock, std::string &payload)
+{
+    unsigned char hdr[2] = {};
+    if (recv(sock, reinterpret_cast<char*>(hdr), 2, MSG_WAITALL) != 2) return false;
+
+    int opcode = hdr[0] & 0x0F;
+    bool masked = (hdr[1] & 0x80) != 0;
+    unsigned long long len = hdr[1] & 0x7F;
+
+    if (len == 126)
+    {
+        unsigned char ext[2] = {};
+        if (recv(sock, reinterpret_cast<char*>(ext), 2, MSG_WAITALL) != 2) return false;
+        len = (static_cast<unsigned long long>(ext[0]) << 8) | ext[1];
+    }
+    else if (len == 127)
+    {
+        return false;
+    }
+
+    unsigned char mask[4] = {};
+    if (masked && recv(sock, reinterpret_cast<char*>(mask), 4, MSG_WAITALL) != 4)
+        return false;
+
+    if (len > 65535) return false;
+    std::vector<char> buf(static_cast<size_t>(len));
+    if (len > 0 &&
+        recv(sock, buf.data(), static_cast<int>(buf.size()), MSG_WAITALL) != static_cast<int>(buf.size()))
+        return false;
+
+    if (masked)
+    {
+        for (size_t i = 0; i < buf.size(); ++i)
+            buf[i] = static_cast<char>(static_cast<unsigned char>(buf[i]) ^ mask[i % 4]);
+    }
+
+    if (opcode != 0x1) return false;
+    payload.assign(buf.begin(), buf.end());
+    return true;
+}
+
+std::string VacsManager::nextId()
+{
+    return "indra-" + std::to_string(nextRequestId_++);
+}
+
+void vacsCall(const std::string &station)
+{
+    static VacsManager manager;
+    manager.StartVacsCall(station);
+>>>>>>> Stashed changes
 }
 
 } // namespace Indra

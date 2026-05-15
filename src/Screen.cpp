@@ -4,6 +4,8 @@
 namespace Indra
 {
 
+static constexpr bool kLowResourceMode = false;
+
 class IndraApcScreen : public EuroScopePlugIn::CRadarScreen
 {
 public:
@@ -26,6 +28,15 @@ public:
           showRegions_(false),
           showFreeText_(false),
           rblEnabled_(false),
+          absAirEnabled_(false),
+          lm0Enabled_(false),
+          ringsEnabled_(false),
+          elwEnabled_(false),
+          obiEnabled_(false),
+          brightEnabled_(false),
+          f3dEnabled_(false),
+          rblAlarmEnabled_(false),
+          overlapEnabled_(false),
           rangeNm_(250),
           centerLat_(0.0),
           centerLon_(0.0),
@@ -60,9 +71,17 @@ public:
           hasUnreadMessages_(false),
           unreadFlashTick_(0),
           vacsShowMenu_(false),
+<<<<<<< Updated upstream
           vacsRole_(0)
+=======
+          vacsRole_(0),
+          vacsCallState_(VacsCallUiState::Idle),
+          vacsLastPollTick_(0),
+          vacsDeferredPoll_(false),
+          vacsDeferredPollTick_(0),
+          zoomLastCalcTick_(0)
+>>>>>>> Stashed changes
     {
-        views_     = loadViewsJson();
         popupRect_ = {120, 120, 550, 430};
         messagesPopupRect_ = {120, 120, 550, 430};
         vacsContacts_ = loadContactsJson();
@@ -73,7 +92,10 @@ public:
             std::string cs = me.GetCallsign();
             std::size_t u  = cs.find('_');
             controllerAirport_ = (u != std::string::npos) ? cs.substr(0, u) : cs;
+            setActiveDataPosition(cs);
         }
+        views_ = loadViewsJson();
+        vacsContacts_ = loadContactsJson();
     }
 
     void OnAsrContentLoaded(bool loaded) override
@@ -97,6 +119,15 @@ public:
             loadBool("INDRA_APC_SHOW_REGIONS",  showRegions_);
             loadBool("INDRA_APC_SHOW_FREETEXT", showFreeText_);
             loadBool("INDRA_APC_RBL",           rblEnabled_);
+            loadBool("INDRA_APC_ABS_AIR",       absAirEnabled_);
+            loadBool("INDRA_APC_LM0",           lm0Enabled_);
+            loadBool("INDRA_APC_RINGS",         ringsEnabled_);
+            loadBool("INDRA_APC_ELW",           elwEnabled_);
+            loadBool("INDRA_APC_OBI",           obiEnabled_);
+            loadBool("INDRA_APC_BRIGHT",        brightEnabled_);
+            loadBool("INDRA_APC_F3D",           f3dEnabled_);
+            loadBool("INDRA_APC_RBL_ALM",       rblAlarmEnabled_);
+            loadBool("INDRA_APC_OVERLAP",       overlapEnabled_);
             loadBool("INDRA_APC_RECORDING",     recording_);
             loadBool("INDRA_APC_RTE",           rteEnabled_);
             loadBool("INDRA_APC_MTCD",          mtcdEnabled_);
@@ -105,6 +136,9 @@ public:
             const char *f = GetDataFromAsr("INDRA_APC_FILTER");
             if (f && *f) filter_ = f;
         }
+        updateDataPosition();
+        views_ = loadViewsJson();
+        vacsContacts_ = loadContactsJson();
         currentZoom_ = rangeNm_;
         applySavedDisplaySettings();
     }
@@ -121,6 +155,9 @@ public:
         if (!overlayEnabled_ ||
             phase != EuroScopePlugIn::REFRESH_PHASE_AFTER_LISTS) return;
 
+        screenObjectStrings_.clear();
+        screenObjectStrings_.reserve(128);
+
         SetBkMode(hdc, TRANSPARENT);
         processHeldViewButtons();
         expireSearchHighlight();
@@ -135,12 +172,19 @@ public:
                 unreadFlashTick_ = GetTickCount();
         }
 
-        drawBottomBar(hdc);
-        drawInlinePopup(hdc);
-        if (messagesPopupVisible_) drawMessagesPopup(hdc);
+        pollVacsState(false);
+        if (kLowResourceMode)
+        {
+            drawLowResourceBottomBar(hdc);
+        }
+        else
+        {
+            drawBottomBar(hdc);
+            drawInlinePopup(hdc);
+            if (messagesPopupVisible_) drawMessagesPopup(hdc);
+        }
         if (searchCircleValid_) drawSearchHighlight(hdc);
         if (qdmLineValid_)      drawQDMLine(hdc);
-        if (hasUnreadMessages_) RequestRefresh();
     }
 
     bool OnCompileCommand(const char *cmd) override
@@ -160,11 +204,7 @@ public:
     {
         if (objType != kObjButton || !objId || button != EuroScopePlugIn::BUTTON_LEFT) return;
         std::string s = objId;
-        static const std::vector<std::string> viewButtons = {"S","0","1/2","1","3","5","8","VIEW1","VIEW2"};
-        bool isView = false;
-        for (const auto &vb : viewButtons)
-            if (s == vb) { isView = true; break; }
-        if (!isView) return;
+        if (!isViewButton(s)) return;
 
         pressStartTime_[s] = GetTickCount();
         longPressTriggered_[s] = false;
@@ -215,6 +255,20 @@ public:
             {
                 vacsShowMenu_ = !(vacsShowMenu_ && vacsRole_ == role);
                 vacsRole_     = role;
+<<<<<<< Updated upstream
+=======
+                if (vacsShowMenu_)
+                {
+                    updateDataPosition();
+                    vacsContacts_ = loadContactsJson();
+                    vacsDeferredPoll_ = true;
+                    vacsDeferredPollTick_ = GetTickCount();
+                }
+                else
+                {
+                    vacsDeferredPoll_ = false;
+                }
+>>>>>>> Stashed changes
                 RequestRefresh();
                 return;
             }
@@ -222,16 +276,58 @@ public:
             {
                 int idx = atoi(s.c_str() + 5);
                 if (idx >= 0 && idx < static_cast<int>(vacsContacts_.size()))
+<<<<<<< Updated upstream
                     vacsCall(vacsContacts_[idx].station);
+=======
+                {
+                    if (isCurrentVacsTarget(vacsContacts_[idx].station))
+                        vacsManager_.EndCurrentCall();
+                    else
+                        vacsManager_.StartVacsCall(vacsContacts_[idx].station);
+                }
+                vacsLastPollTick_ = 0;
+                pollVacsState(true);
+                RequestRefresh();
+                return;
+            }
+            if (s == "INCOMING")
+            {
+                if (vacsCallState_ == VacsCallUiState::IncomingRinging)
+                    vacsManager_.AcceptIncomingCall();
+                else if (vacsCallState_ == VacsCallUiState::Active && vacsStatus_.target.empty())
+                    vacsManager_.EndCurrentCall();
+                vacsLastPollTick_ = 0;
+                pollVacsState(true);
+                RequestRefresh();
+                return;
+            }
+            if (s == "VACS_CUSTOM")
+            {
+                if (isCurrentCustomVacsTarget())
+                {
+                    vacsManager_.EndCurrentCall();
+                    vacsLastPollTick_ = 0;
+                    pollVacsState(true);
+                    RequestRefresh();
+                }
+                else
+                {
+                    GetPlugIn()->OpenPopupEdit(area, FN_VACS_CUSTOM, "");
+                }
+>>>>>>> Stashed changes
                 return;
             }
         }
 
+<<<<<<< Updated upstream
         static const std::vector<std::string> viewButtons = {"S","0","1/2","1","3","5","8","VIEW1","VIEW2"};
         bool isView = false;
         for (const auto &vb : viewButtons)
             if (s == vb) { isView = true; break; }
         if (isView)
+=======
+        if (isViewButton(s))
+>>>>>>> Stashed changes
         {
             if (button == EuroScopePlugIn::BUTTON_LEFT &&
                 pressStartTime_.find(s) == pressStartTime_.end())
@@ -405,6 +501,23 @@ public:
                 RequestRefresh();
             }
             break;
+        case FN_VACS_CUSTOM:
+            if (itemString && *itemString)
+            {
+                std::string station = itemString;
+                station.erase(std::remove(station.begin(), station.end(), '\r'), station.end());
+                station.erase(std::remove(station.begin(), station.end(), '\n'), station.end());
+                station.erase(std::remove_if(station.begin(), station.end(),
+                    [](unsigned char c) { return std::isspace(c); }), station.end());
+                if (!station.empty())
+                {
+                    vacsManager_.StartVacsCall(station);
+                    vacsLastPollTick_ = 0;
+                    pollVacsState(true);
+                    RequestRefresh();
+                }
+            }
+            break;
         default: break;
         }
         saveSettings();
@@ -428,6 +541,15 @@ protected:
     bool        showRegions_;
     bool        showFreeText_;
     bool        rblEnabled_;
+    bool        absAirEnabled_;
+    bool        lm0Enabled_;
+    bool        ringsEnabled_;
+    bool        elwEnabled_;
+    bool        obiEnabled_;
+    bool        brightEnabled_;
+    bool        f3dEnabled_;
+    bool        rblAlarmEnabled_;
+    bool        overlapEnabled_;
     int         rangeNm_;
     double      centerLat_;
     double      centerLon_;
@@ -480,6 +602,27 @@ protected:
     std::vector<Contact> vacsContacts_;
     bool                 vacsShowMenu_ = false;
     int                  vacsRole_     = 0;
+<<<<<<< Updated upstream
+=======
+    VacsManager          vacsManager_;
+    VacsCallStatus       vacsStatus_;
+    VacsCallUiState      vacsCallState_ = VacsCallUiState::Idle;
+    DWORD                vacsLastPollTick_ = 0;
+    bool                 vacsDeferredPoll_ = false;
+    DWORD                vacsDeferredPollTick_ = 0;
+    DWORD                zoomLastCalcTick_ = 0;
+    std::vector<std::string> screenObjectStrings_;
+
+    void addScreenObjectStable(int objectType, const std::string &objectId,
+                               RECT area, bool moveable, const std::string &message)
+    {
+        screenObjectStrings_.push_back(objectId);
+        const char *id = screenObjectStrings_.back().c_str();
+        screenObjectStrings_.push_back(message);
+        const char *msg = screenObjectStrings_.back().c_str();
+        AddScreenObject(objectType, id, area, moveable, msg);
+    }
+>>>>>>> Stashed changes
 
     void loadBool(const char *key, bool &value)
     {
@@ -510,6 +653,15 @@ protected:
         SaveDataToAsr("INDRA_APC_SHOW_REGIONS",   "regions",    showRegions_       ? "1" : "0");
         SaveDataToAsr("INDRA_APC_SHOW_FREETEXT",  "freetext",   showFreeText_      ? "1" : "0");
         SaveDataToAsr("INDRA_APC_RBL",            "rbl",        rblEnabled_        ? "1" : "0");
+        SaveDataToAsr("INDRA_APC_ABS_AIR",        "absair",     absAirEnabled_     ? "1" : "0");
+        SaveDataToAsr("INDRA_APC_LM0",            "lm0",        lm0Enabled_        ? "1" : "0");
+        SaveDataToAsr("INDRA_APC_RINGS",          "rings",      ringsEnabled_      ? "1" : "0");
+        SaveDataToAsr("INDRA_APC_ELW",            "elw",        elwEnabled_        ? "1" : "0");
+        SaveDataToAsr("INDRA_APC_OBI",            "obi",        obiEnabled_        ? "1" : "0");
+        SaveDataToAsr("INDRA_APC_BRIGHT",         "bright",     brightEnabled_     ? "1" : "0");
+        SaveDataToAsr("INDRA_APC_F3D",            "f3d",        f3dEnabled_        ? "1" : "0");
+        SaveDataToAsr("INDRA_APC_RBL_ALM",        "rblalm",     rblAlarmEnabled_   ? "1" : "0");
+        SaveDataToAsr("INDRA_APC_OVERLAP",        "overlap",    overlapEnabled_    ? "1" : "0");
         SaveDataToAsr("INDRA_APC_RECORDING",      "recording",  recording_         ? "1" : "0");
         SaveDataToAsr("INDRA_APC_FILTER",         "filter",     filter_.c_str());
         SaveDataToAsr("INDRA_APC_RTE",            "rte",        rteEnabled_        ? "1" : "0");
@@ -567,17 +719,201 @@ protected:
         return result;
     }
 
+    void pollVacsState(bool force)
+    {
+        if (!force &&
+            !vacsShowMenu_ &&
+            vacsCallState_ == VacsCallUiState::Idle)
+            return;
+
+        DWORD now = GetTickCount();
+        if (!force && vacsDeferredPoll_)
+        {
+            if (now - vacsDeferredPollTick_ < 750)
+                return;
+            vacsDeferredPoll_ = false;
+        }
+
+        DWORD interval = 30000;
+        if (vacsShowMenu_)
+            interval = 5000;
+        if (vacsCallState_ == VacsCallUiState::IncomingRinging ||
+            vacsCallState_ == VacsCallUiState::OutgoingRinging)
+            interval = 3000;
+        else if (vacsCallState_ == VacsCallUiState::Active)
+            interval = 10000;
+
+        if (!force && vacsLastPollTick_ != 0 && now - vacsLastPollTick_ < interval)
+            return;
+
+        vacsLastPollTick_ = now;
+        if (vacsManager_.RefreshCallStatus(vacsStatus_))
+            vacsCallState_ = vacsStatus_.state;
+    }
+
+    std::string normalizedCallsign(std::string value) const
+    {
+        value.erase(std::remove_if(value.begin(), value.end(),
+            [](unsigned char c) { return std::isspace(c); }), value.end());
+        std::transform(value.begin(), value.end(), value.begin(),
+            [](unsigned char c) { return static_cast<char>(std::toupper(c)); });
+        return value;
+    }
+
+    bool isOutgoingOrActiveVacsCall() const
+    {
+        return vacsCallState_ == VacsCallUiState::OutgoingRinging ||
+               vacsCallState_ == VacsCallUiState::Active;
+    }
+
+    bool isCurrentVacsTarget(const std::string &station) const
+    {
+        return isOutgoingOrActiveVacsCall() &&
+               !vacsStatus_.target.empty() &&
+               normalizedCallsign(station) == normalizedCallsign(vacsStatus_.target);
+    }
+
+    bool targetIsConfiguredContact() const
+    {
+        if (vacsStatus_.target.empty()) return false;
+        std::string target = normalizedCallsign(vacsStatus_.target);
+        for (const auto &contact : vacsContacts_)
+            if (normalizedCallsign(contact.station) == target)
+                return true;
+        return false;
+    }
+
+    bool isCurrentCustomVacsTarget() const
+    {
+        return isOutgoingOrActiveVacsCall() &&
+               !vacsStatus_.target.empty() &&
+               !targetIsConfiguredContact();
+    }
+
+    bool isViewButton(const std::string &value) const
+    {
+        static const char *buttons[] = {"S", "0", "1/2", "1", "3", "5", "8", "VIEW1", "VIEW2"};
+        for (const char *button : buttons)
+            if (value == button)
+                return true;
+        return false;
+    }
+
+    void drawLowResourceButton(HDC hdc, const std::string &id, const char *label,
+                               RECT r, bool active)
+    {
+        fillSolid(hdc, r, active ? rgb(0, 86, 150) : kColBtnFace);
+        FrameRect(hdc, &r, reinterpret_cast<HBRUSH>(GetStockObject(GRAY_BRUSH)));
+        SetTextColor(hdc, active ? rgb(255, 255, 255) : kColBtnText);
+        DrawTextA(hdc, label, -1, &r, DT_CENTER | DT_VCENTER | DT_SINGLELINE | DT_END_ELLIPSIS);
+        addScreenObjectStable(kObjButton, id, r, false, label);
+    }
+
+    void drawLowResourceBottomBar(HDC hdc)
+    {
+        RECT bar = bottomBarArea();
+        fillSolid(hdc, bar, kColBarBg);
+        SetBkMode(hdc, TRANSPARENT);
+
+        int x = bar.left + 6;
+        int y = bar.top + 7;
+        const int colW = 58;
+        const int h = 20;
+        const int gap = 4;
+
+        auto buttonAt = [&](int bx, int by, int bw, const std::string &id,
+                            const char *label, bool active = false) {
+            RECT r = { bx, by, bx + bw, by + h };
+            drawLowResourceButton(hdc, id, label, r, active);
+        };
+
+        auto stack = [&](std::initializer_list<std::pair<const char*, bool>> items) {
+            int row = 0;
+            for (const auto &item : items)
+            {
+                if (item.first && *item.first)
+                    buttonAt(x, y + row * h, colW, item.first, item.first, item.second);
+                ++row;
+            }
+            x += colW + gap;
+        };
+
+        auto single = [&](const std::string &id, const char *label, int bw, bool active = false) {
+            buttonAt(x, y + h, bw, id, label, active);
+            x += bw + gap;
+        };
+
+        buttonAt(x, y, colW, "EXECUTIVE", "EXEC", vacsShowMenu_ && vacsRole_ == 0);
+        buttonAt(x, y + h, colW, "PLANNER", "PLAN", vacsShowMenu_ && vacsRole_ == 1);
+        x += colW + gap;
+
+        if (vacsShowMenu_)
+        {
+            int maxX = bar.right - 130;
+            for (int i = 0; i < static_cast<int>(vacsContacts_.size()) && x + 84 < maxX; ++i)
+            {
+                RECT r = { x, y, x + 84, y + h };
+                bool active = isCurrentVacsTarget(vacsContacts_[i].station);
+                drawLowResourceButton(hdc, "VACS_" + std::to_string(i),
+                                      vacsContacts_[i].name.c_str(), r, active);
+                x += 84 + gap;
+            }
+            RECT incoming = { x, y, x + 66, y + h };
+            drawLowResourceButton(hdc, "INCOMING", "IN", incoming,
+                                  vacsCallState_ == VacsCallUiState::IncomingRinging);
+            x += 66 + gap;
+            RECT custom = { x, y, x + 74, y + h };
+            std::string customLabel = isCurrentCustomVacsTarget() ? vacsStatus_.target : "CUSTOM";
+            drawLowResourceButton(hdc, "VACS_CUSTOM", customLabel.c_str(), custom,
+                                  isCurrentCustomVacsTarget());
+        }
+        else
+        {
+            stack({{"ARR", filter_ == "ARRIVALS"}, {"DEP", filter_ == "DEPARTURES"}, {"FPL", false}});
+            stack({{"CPDLC", false}, {"ABS AIR", absAirEnabled_}});
+            stack({{"VIEW1", false}, {"VIEW2", false}});
+            stack({{"LM 0", lm0Enabled_}, {"RINGS", ringsEnabled_}});
+            stack({{"AREAS", false}, {"ELW", elwEnabled_}});
+            stack({{"RTE", rteEnabled_}, {"RBL", rblEnabled_}, {"OBI", obiEnabled_}});
+            stack({{"DATBLK", false}, {"BRIGHT", brightEnabled_}, {"F 3D", f3dEnabled_}});
+            stack({{"QDM", qdmMode_}, {"SEP", false}, {"METEO", false}});
+            stack({{"RBL ALM", rblAlarmEnabled_}, {"MTCD", mtcdEnabled_}, {"ALM OFF", !alarmEnabled_}});
+            stack({{"OVERLAP", overlapEnabled_}, {"FREETEXT", showFreeText_}, {"SECTORS", false}});
+            stack({{"LAST POS", false}, {"FINDER", false}, {"SSR F", false}});
+            stack({{"USERS", false}});
+
+            single("+", "+", 24);
+            single("-", "-", 24);
+            single("^", "^", 24);
+            single("<", "<", 24);
+            single(">", ">", 24);
+            single("v", "v", 24);
+            single("EXP +", "EXP+", 42);
+            single("EXP -", "EXP-", 42);
+            single("CEN", "CEN", 38);
+
+            const char *views[] = {"S", "0", "1/2", "1", "3", "5", "8"};
+            for (const char *view : views)
+                single(view, view, 28);
+
+            single("MESSAGES", "MSG", 42, messagesPopupVisible_ || hasUnreadMessages_);
+        }
+
+        RECT status = { bar.right - 116, bar.top + 8, bar.right - 8, bar.top + 32 };
+        SetTextColor(hdc, kColBtnText);
+        DrawTextA(hdc, "Indra APC", -1, &status, DT_RIGHT | DT_VCENTER | DT_SINGLELINE);
+    }
+
     void drawBottomBar(HDC hdc)
     {
         RECT bar = bottomBarArea();
         fillSolid(hdc, bar, kColBarBg);
 
-        HPEN topPen = CreatePen(PS_SOLID, 1, kColBarFrame);
+        HPEN topPen = cachedPen(kColBarFrame);
         HPEN oldPen = static_cast<HPEN>(SelectObject(hdc, topPen));
         MoveToEx(hdc, bar.left,  bar.top, nullptr);
         LineTo  (hdc, bar.right, bar.top);
         SelectObject(hdc, oldPen);
-        DeleteObject(topPen);
 
         int y0 = bar.top + kBtnMargin;
         int bh = kBtnH;
@@ -586,45 +922,56 @@ protected:
         int gap = 4;
 
         auto drawSeparator = [&](int xPos) {
-            HPEN sepPen = CreatePen(PS_SOLID, 1, kColBarFrame);
+            HPEN sepPen = cachedPen(kColBarFrame);
             HPEN old = static_cast<HPEN>(SelectObject(hdc, sepPen));
             MoveToEx(hdc, xPos, bar.top + 4, nullptr);
             LineTo(hdc, xPos, bar.bottom - 4);
             SelectObject(hdc, old);
-            DeleteObject(sepPen);
         };
 
+<<<<<<< Updated upstream
         drawVacsGroup(hdc, x, y0, colW, bh);
         x += colW + gap;
+=======
+        int vacsWidth = drawVacsGroup(hdc, x, y0, colW, bh);
+        x += vacsWidth + gap;
+
+        if (vacsShowMenu_)
+        {
+            drawBottomRightBranding(hdc, bar);
+            return;
+        }
+
+>>>>>>> Stashed changes
         drawVerticalGroup(hdc, x, y0, colW, bh, "ARR", "DEP", "FPL",
                           filter_ == "ARRIVALS", filter_ == "DEPARTURES", false);
         x += colW + gap;
         drawVerticalGroup(hdc, x, y0, colW, bh, "CPDLC", "ABS AIR", "",
-                          false, false, false);
+                          false, absAirEnabled_, false);
         x += colW + gap;
         drawVerticalGroup(hdc, x, y0, colW, bh, "VIEW1", "VIEW2", "",
                           false, false, false);
         x += colW + gap;
         drawVerticalGroup(hdc, x, y0, colW, bh, "LM 0", "RINGS", "",
-                          false, false, false);
+                          lm0Enabled_, ringsEnabled_, false);
         x += colW + gap;
         drawVerticalGroup(hdc, x, y0, colW, bh, "AREAS", "ELW", "",
-                          false, false, false);
+                          false, elwEnabled_, false);
         x += colW + gap;
         drawVerticalGroup(hdc, x, y0, colW, bh, "RTE", "RBL", "OBI",
-                          rteEnabled_, false, false);
+                          rteEnabled_, rblEnabled_, obiEnabled_);
         x += colW + gap;
         drawVerticalGroup(hdc, x, y0, colW, bh, "DATBLK", "BRIGHT", "F 3D",
-                          false, false, false);
+                          false, brightEnabled_, f3dEnabled_);
         x += colW + gap;
         drawVerticalGroup(hdc, x, y0, colW, bh, "QDM", "SEP", "METEO",
                           qdmMode_, false, false);
         x += colW + gap;
         drawVerticalGroup(hdc, x, y0, colW, bh, "RBL ALM", "MTCD", "ALM OFF",
-                          false, mtcdEnabled_, !alarmEnabled_);
+                          rblAlarmEnabled_, mtcdEnabled_, !alarmEnabled_);
         x += colW + gap;
         drawVerticalGroup(hdc, x, y0, colW, bh, "OVERLAP", "FREETEXT", "SECTORS",
-                          false, false, false);
+                          overlapEnabled_, showFreeText_, false);
         x += colW + gap;
         drawVerticalGroup(hdc, x, y0, colW, bh, "LAST POS", "FINDER", "SSR F",
                           false, false, false);
@@ -640,10 +987,15 @@ protected:
         drawSeparator(x - gap/2);
         x += 4;
 
-        EuroScopePlugIn::CPosition zoomLd, zoomRu;
-        GetDisplayArea(&zoomLd, &zoomRu);
-        currentZoom_ = currentRangeFromDisplay(zoomLd, zoomRu);
-        rangeNm_ = currentZoom_;
+        DWORD now = GetTickCount();
+        if (zoomLastCalcTick_ == 0 || now - zoomLastCalcTick_ > 1000)
+        {
+            EuroScopePlugIn::CPosition zoomLd, zoomRu;
+            GetDisplayArea(&zoomLd, &zoomRu);
+            currentZoom_ = currentRangeFromDisplay(zoomLd, zoomRu);
+            rangeNm_ = currentZoom_;
+            zoomLastCalcTick_ = now;
+        }
         char zoomLabel[20];
         snprintf(zoomLabel, sizeof(zoomLabel), "%dNM", currentZoom_);
         drawVerticalGroup(hdc, x, y0, colW, bh, zoomLabel, "+", "-",
@@ -691,8 +1043,8 @@ protected:
             COLORREF faceCol = msgFlash ? rgb(0, 100, 200) : kColBtnFace;
             fillSolid(hdc, msgRect, faceCol);
 
-            HPEN hiPen2 = CreatePen(PS_SOLID, 1, msgFlash ? rgb(80, 160, 255) : kColBtnHiEdge);
-            HPEN shPen2 = CreatePen(PS_SOLID, 1, kColBtnShEdge);
+            HPEN hiPen2 = cachedPen(msgFlash ? rgb(80, 160, 255) : kColBtnHiEdge);
+            HPEN shPen2 = cachedPen(kColBtnShEdge);
             HPEN oldPen2 = static_cast<HPEN>(SelectObject(hdc, hiPen2));
             MoveToEx(hdc, msgRect.left,      msgRect.bottom - 1, nullptr);
             LineTo  (hdc, msgRect.left,      msgRect.top);
@@ -702,25 +1054,21 @@ protected:
             LineTo  (hdc, msgRect.right - 1, msgRect.bottom - 1);
             LineTo  (hdc, msgRect.left,      msgRect.bottom - 1);
             SelectObject(hdc, oldPen2);
-            DeleteObject(hiPen2);
-            DeleteObject(shPen2);
 
             SetBkMode   (hdc, TRANSPARENT);
             SetTextColor(hdc, msgFlash ? rgb(255, 255, 255) : kColBtnText);
-            HFONT fnt2 = CreateFontA(-10, 0, 0, 0, msgFlash ? FW_BOLD : FW_NORMAL,
-                                     FALSE, FALSE, FALSE, ANSI_CHARSET,
-                                     OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS,
-                                     DEFAULT_QUALITY, FIXED_PITCH | FF_MODERN, "Courier New");
+            HFONT fnt2 = cachedFont(-10, msgFlash ? FW_BOLD : FW_NORMAL, "Courier New",
+                                    FIXED_PITCH | FF_MODERN);
             HFONT oldFnt2 = static_cast<HFONT>(SelectObject(hdc, fnt2));
             DrawTextA(hdc, "MESSAGES", -1, &msgRect, DT_CENTER | DT_VCENTER | DT_SINGLELINE);
             SelectObject(hdc, oldFnt2);
-            DeleteObject(fnt2);
             AddScreenObject(kObjButton, "MESSAGES", msgRect, false, "Messages");
         }
 
         drawBottomRightBranding(hdc, bar);
     }
 
+<<<<<<< Updated upstream
     void drawVacsGroup(HDC hdc, int x, int y, int colW, int totalH)
     {
         int h3 = totalH / 3;
@@ -742,6 +1090,71 @@ protected:
             AddScreenObject(kObjButton, id.c_str(), {bx, by, bx+btnW, by+btnH},
                             false, vacsContacts_[i].station.c_str());
         }
+=======
+    int drawVacsGroup(HDC hdc, int x, int y, int colW, int totalH)
+    {
+        int h2 = totalH / 2;
+        drawBtnEx(hdc, x, y,      colW, h2, "EXECUTIVE", "EXECUTIVE",
+                  vacsShowMenu_ && vacsRole_ == 0, kColBtnFace, kColBtnText);
+        drawBtnEx(hdc, x, y + h2, colW, h2, "PLANNER", "PLANNER",
+                  vacsShowMenu_ && vacsRole_ == 1, kColBtnFace, kColBtnText);
+        if (vacsShowMenu_)
+        {
+            int menuX = x + colW + kBtnGap;
+            int contactsW = drawCallMenu(hdc, menuX, y, totalH);
+            int controlsX = menuX + contactsW + (contactsW > 0 ? kBtnGap : 0);
+            drawVacsPanelControls(hdc, controlsX, y, colW, totalH);
+            return colW + kBtnGap + contactsW + (contactsW > 0 ? kBtnGap : 0) + colW;
+        }
+        return colW;
+    }
+
+    int drawCallMenu(HDC hdc, int menuX, int menuY, int totalH)
+    {
+        const int btnW = 96;
+        const int btnH = (totalH - kBtnGap) / 2;
+        int cols = static_cast<int>((vacsContacts_.size() + 1) / 2);
+        for (int i = 0; i < static_cast<int>(vacsContacts_.size()); ++i)
+        {
+            int bx = menuX + (i / 2) * (btnW + kBtnGap);
+            int by = menuY + (i % 2) * (btnH + kBtnGap);
+            std::string id = "VACS_" + std::to_string(i);
+            bool currentTarget = isCurrentVacsTarget(vacsContacts_[i].station);
+            bool flash = currentTarget &&
+                         vacsCallState_ == VacsCallUiState::OutgoingRinging &&
+                         (((GetTickCount() / 450) % 2) == 0);
+            bool solid = currentTarget && vacsCallState_ == VacsCallUiState::Active;
+            COLORREF face = (flash || solid) ? rgb(0, 96, 210) : kColBtnFace;
+            COLORREF text = (flash || solid) ? rgb(255, 255, 255) : kColBtnText;
+            drawBtnEx(hdc, bx, by, btnW, btnH, id.c_str(), vacsContacts_[i].name.c_str(),
+                      false, face, text);
+        }
+        return cols > 0 ? cols * btnW + (cols - 1) * kBtnGap : 0;
+    }
+
+    void drawVacsPanelControls(HDC hdc, int x, int y, int colW, int totalH)
+    {
+        int h2 = totalH / 2;
+        bool ringing = vacsCallState_ == VacsCallUiState::IncomingRinging;
+        bool active = vacsCallState_ == VacsCallUiState::Active && vacsStatus_.target.empty();
+        bool flash = ringing && (((GetTickCount() / 450) % 2) == 0);
+        COLORREF incomingFace = (active || flash) ? rgb(0, 96, 210) : kColBtnFace;
+        COLORREF incomingText = (active || flash) ? rgb(255, 255, 255) : kColBtnText;
+        bool customCurrent = isCurrentCustomVacsTarget();
+        bool customFlash = customCurrent &&
+                           vacsCallState_ == VacsCallUiState::OutgoingRinging &&
+                           (((GetTickCount() / 450) % 2) == 0);
+        bool customSolid = customCurrent && vacsCallState_ == VacsCallUiState::Active;
+        COLORREF customFace = (customFlash || customSolid) ? rgb(0, 96, 210) : kColBtnFace;
+        COLORREF customText = (customFlash || customSolid) ? rgb(255, 255, 255) : kColBtnText;
+        std::string customLabel = customCurrent ? vacsStatus_.target : "CUSTOM";
+
+        drawBtnEx(hdc, x, y, colW, h2, "INCOMING", "INCOMING",
+                  false, incomingFace, incomingText);
+        drawBtnEx(hdc, x, y + h2, colW, h2, "VACS_CUSTOM", customLabel.c_str(),
+                  false, customFace, customText);
+
+>>>>>>> Stashed changes
     }
 
         void drawVerticalGroup(HDC hdc, int x, int y, int w, int totalH,
@@ -768,12 +1181,19 @@ protected:
 
     int drawBtn(HDC hdc, int x, int y, int w, int h, const char *label, bool pressed)
     {
+        return drawBtnEx(hdc, x, y, w, h, label, label, pressed, kColBtnFace, kColBtnText);
+    }
+
+    int drawBtnEx(HDC hdc, int x, int y, int w, int h,
+                  const char *objId, const char *label, bool pressed,
+                  COLORREF faceColor, COLORREF textColor)
+    {
         RECT r = { x, y, x + w, y + h };
-        COLORREF faceCol = pressed ? kColBtnPress : kColBtnFace;
+        COLORREF faceCol = pressed ? kColBtnPress : faceColor;
         fillSolid(hdc, r, faceCol);
 
-        HPEN hiPen = CreatePen(PS_SOLID, 1, pressed ? kColBtnShEdge : kColBtnHiEdge);
-        HPEN shPen = CreatePen(PS_SOLID, 1, pressed ? kColBtnHiEdge : kColBtnShEdge);
+        HPEN hiPen = cachedPen(pressed ? kColBtnShEdge : kColBtnHiEdge);
+        HPEN shPen = cachedPen(pressed ? kColBtnHiEdge : kColBtnShEdge);
         HPEN oldPen = static_cast<HPEN>(SelectObject(hdc, hiPen));
         MoveToEx(hdc, r.left,      r.bottom - 1, nullptr);
         LineTo  (hdc, r.left,      r.top);
@@ -783,27 +1203,95 @@ protected:
         LineTo  (hdc, r.right - 1, r.bottom - 1);
         LineTo  (hdc, r.left,      r.bottom - 1);
         SelectObject(hdc, oldPen);
-        DeleteObject(hiPen);
-        DeleteObject(shPen);
 
         SetBkMode   (hdc, TRANSPARENT);
-        SetTextColor(hdc, kColBtnText);
-        HFONT font = CreateFontA(-10, 0, 0, 0, FW_NORMAL, FALSE, FALSE, FALSE,
-                                 ANSI_CHARSET, OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS,
-                                 DEFAULT_QUALITY, FIXED_PITCH | FF_MODERN, "Courier New");
+        SetTextColor(hdc, textColor);
+        HFONT font = cachedButtonFont();
         HFONT oldFont = static_cast<HFONT>(SelectObject(hdc, font));
         DrawTextA(hdc, label, -1, &r, DT_CENTER | DT_VCENTER | DT_SINGLELINE);
         SelectObject(hdc, oldFont);
-        DeleteObject(font);
-        AddScreenObject(kObjButton, label, r, false, label);
+        addScreenObjectStable(kObjButton, objId ? objId : "", r, false, label ? label : "");
         return x + w + kBtnGap;
     }
 
     void fillSolid(HDC hdc, const RECT &r, COLORREF color)
     {
-        HBRUSH brush = CreateSolidBrush(color);
+        HBRUSH brush = cachedBrush(color);
         FillRect(hdc, &r, brush);
-        DeleteObject(brush);
+    }
+
+    HBRUSH cachedBrush(COLORREF color)
+    {
+        static std::map<COLORREF, HBRUSH> brushes;
+        auto it = brushes.find(color);
+        if (it != brushes.end()) return it->second;
+        HBRUSH brush = CreateSolidBrush(color);
+        brushes[color] = brush;
+        return brush;
+    }
+
+    HPEN cachedPen(COLORREF color)
+    {
+        return cachedPen(PS_SOLID, 1, color);
+    }
+
+    HPEN cachedPen(int style, int width, COLORREF color)
+    {
+        struct PenKey
+        {
+            int style;
+            int width;
+            COLORREF color;
+
+            bool operator<(const PenKey &other) const
+            {
+                if (style != other.style) return style < other.style;
+                if (width != other.width) return width < other.width;
+                return color < other.color;
+            }
+        };
+
+        static std::map<PenKey, HPEN> pens;
+        PenKey key = { style, width, color };
+        auto it = pens.find(key);
+        if (it != pens.end()) return it->second;
+        HPEN pen = CreatePen(style, width, color);
+        pens[key] = pen;
+        return pen;
+    }
+
+    HFONT cachedFont(int height, int weight, const char *face, DWORD pitchAndFamily)
+    {
+        struct FontKey
+        {
+            int height;
+            int weight;
+            DWORD pitchAndFamily;
+            std::string face;
+
+            bool operator<(const FontKey &other) const
+            {
+                if (height != other.height) return height < other.height;
+                if (weight != other.weight) return weight < other.weight;
+                if (pitchAndFamily != other.pitchAndFamily) return pitchAndFamily < other.pitchAndFamily;
+                return face < other.face;
+            }
+        };
+
+        static std::map<FontKey, HFONT> fonts;
+        FontKey key = { height, weight, pitchAndFamily, face ? face : "" };
+        auto it = fonts.find(key);
+        if (it != fonts.end()) return it->second;
+        HFONT font = CreateFontA(height, 0, 0, 0, weight, FALSE, FALSE, FALSE,
+                                 ANSI_CHARSET, OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS,
+                                 DEFAULT_QUALITY, pitchAndFamily, face);
+        fonts[key] = font;
+        return font;
+    }
+
+    HFONT cachedButtonFont()
+    {
+        return cachedFont(-10, FW_NORMAL, "Courier New", FIXED_PITCH | FF_MODERN);
     }
 
     void drawBottomRightBranding(HDC hdc, const RECT &bar)
@@ -814,9 +1302,9 @@ protected:
                      bar.right - 10, bar.top + (rectH(bar) + h) / 2 };
 
         SetBkMode(hdc, TRANSPARENT);
-        HPEN pen = CreatePen(PS_SOLID, 1, rgb(168, 170, 154));
+        HPEN pen = cachedPen(rgb(168, 170, 154));
         HPEN oldPen = static_cast<HPEN>(SelectObject(hdc, pen));
-        HBRUSH dotBrush = CreateSolidBrush(rgb(168, 170, 154));
+        HBRUSH dotBrush = cachedBrush(rgb(168, 170, 154));
         HBRUSH oldBrush = static_cast<HBRUSH>(SelectObject(hdc, dotBrush));
 
         int cx = box.left + 28;
@@ -835,9 +1323,7 @@ protected:
             }
         }
 
-        HFONT logoFont = CreateFontA(-24, 0, 0, 0, FW_BOLD, FALSE, FALSE, FALSE,
-                                     ANSI_CHARSET, OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS,
-                                     DEFAULT_QUALITY, DEFAULT_PITCH | FF_SWISS, "Arial Rounded MT Bold");
+        HFONT logoFont = cachedLogoFont();
         HFONT oldFont = static_cast<HFONT>(SelectObject(hdc, logoFont));
         SetTextColor(hdc, rgb(218, 216, 196));
         RECT textRect = { box.left + 66, box.top + 2, box.right, box.bottom - 2 };
@@ -846,9 +1332,11 @@ protected:
         SelectObject(hdc, oldFont);
         SelectObject(hdc, oldPen);
         SelectObject(hdc, oldBrush);
-        DeleteObject(logoFont);
-        DeleteObject(pen);
-        DeleteObject(dotBrush);
+    }
+
+    HFONT cachedLogoFont()
+    {
+        return cachedFont(-24, FW_BOLD, "Arial Rounded MT Bold", DEFAULT_PITCH | FF_SWISS);
     }
 
     void drawInlinePopup(HDC hdc)
@@ -856,23 +1344,18 @@ protected:
         if (!popupVisible_) return;
         clampPopupToRadar(popupRect_);
         RECT r = popupRect_;
-        HBRUSH bg = CreateSolidBrush(kColPopupBg);
+        HBRUSH bg = cachedBrush(kColPopupBg);
         FillRect(hdc, &r, bg);
-        DeleteObject(bg);
         RECT title = { r.left, r.top, r.right, r.top + 24 };
-        HBRUSH titleBg = CreateSolidBrush(kColPopupTitle);
+        HBRUSH titleBg = cachedBrush(kColPopupTitle);
         FillRect(hdc, &title, titleBg);
-        DeleteObject(titleBg);
-        HPEN frame  = CreatePen(PS_SOLID, 1, kColBarFrame);
+        HPEN frame  = cachedPen(kColBarFrame);
         HPEN oldPen = static_cast<HPEN>(SelectObject(hdc, frame));
         Rectangle(hdc, r.left, r.top, r.right, r.bottom);
         MoveToEx(hdc, r.left, title.bottom, nullptr);
         LineTo  (hdc, r.right, title.bottom);
         SelectObject(hdc, oldPen);
-        DeleteObject(frame);
-        HFONT titleFont = CreateFontA(-14, 0, 0, 0, FW_BOLD, FALSE, FALSE, FALSE,
-                                      ANSI_CHARSET, OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS,
-                                      DEFAULT_QUALITY, FIXED_PITCH | FF_MODERN, "Consolas");
+        HFONT titleFont = cachedFont(-14, FW_BOLD, "Consolas", FIXED_PITCH | FF_MODERN);
         HFONT oldFont = static_cast<HFONT>(SelectObject(hdc, titleFont));
         SetBkMode   (hdc, TRANSPARENT);
         SetTextColor(hdc, kColBtnText);
@@ -883,16 +1366,12 @@ protected:
         drawBtn(hdc, close.left, close.top, rectW(close), rectH(close), "X", false);
         AddScreenObject(kObjButton, "POPUP_CLOSE", close, false, "Close popout");
         RECT content = { r.left + 8, title.bottom + 8, r.right - 8, r.bottom - 8 };
-        HFONT bodyFont = CreateFontA(-13, 0, 0, 0, FW_NORMAL, FALSE, FALSE, FALSE,
-                                     ANSI_CHARSET, OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS,
-                                     DEFAULT_QUALITY, FIXED_PITCH | FF_MODERN, "Consolas");
+        HFONT bodyFont = cachedFont(-13, FW_NORMAL, "Consolas", FIXED_PITCH | FF_MODERN);
         SelectObject(hdc, bodyFont);
         SetTextColor(hdc, kColBtnText);
         DrawTextA(hdc, popupContent_.empty() ? "No data available." : popupContent_.c_str(),
                   -1, &content, DT_LEFT | DT_TOP | DT_WORDBREAK);
         SelectObject(hdc, oldFont);
-        DeleteObject(titleFont);
-        DeleteObject(bodyFont);
     }
 
     void drawMessagesPopup(HDC hdc)
@@ -900,23 +1379,18 @@ protected:
         if (!messagesPopupVisible_) return;
         clampPopupToRadar(messagesPopupRect_);
         RECT r = messagesPopupRect_;
-        HBRUSH bg = CreateSolidBrush(kColPopupBg);
+        HBRUSH bg = cachedBrush(kColPopupBg);
         FillRect(hdc, &r, bg);
-        DeleteObject(bg);
         RECT title = { r.left, r.top, r.right, r.top + 24 };
-        HBRUSH titleBg = CreateSolidBrush(kColPopupTitle);
+        HBRUSH titleBg = cachedBrush(kColPopupTitle);
         FillRect(hdc, &title, titleBg);
-        DeleteObject(titleBg);
-        HPEN frame  = CreatePen(PS_SOLID, 1, kColBarFrame);
+        HPEN frame  = cachedPen(kColBarFrame);
         HPEN oldPen = static_cast<HPEN>(SelectObject(hdc, frame));
         Rectangle(hdc, r.left, r.top, r.right, r.bottom);
         MoveToEx(hdc, r.left, title.bottom, nullptr);
         LineTo  (hdc, r.right, title.bottom);
         SelectObject(hdc, oldPen);
-        DeleteObject(frame);
-        HFONT titleFont = CreateFontA(-14, 0, 0, 0, FW_BOLD, FALSE, FALSE, FALSE,
-                                      ANSI_CHARSET, OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS,
-                                      DEFAULT_QUALITY, FIXED_PITCH | FF_MODERN, "Consolas");
+        HFONT titleFont = cachedFont(-14, FW_BOLD, "Consolas", FIXED_PITCH | FF_MODERN);
         HFONT oldFont = static_cast<HFONT>(SelectObject(hdc, titleFont));
         SetBkMode   (hdc, TRANSPARENT);
         SetTextColor(hdc, kColBtnText);
@@ -940,16 +1414,14 @@ protected:
         RECT inputHintRect = { sendRect.right + 6, sendRect.top,
                                convRect.right, sendRect.bottom };
 
-        HPEN whitePen = CreatePen(PS_SOLID, 1, kColBarFrame);
-        SelectObject(hdc, whitePen);
+        HPEN whitePen = cachedPen(kColBarFrame);
+        HPEN oldBoxPen = static_cast<HPEN>(SelectObject(hdc, whitePen));
         Rectangle(hdc, contactsRect.left, contactsRect.top, contactsRect.right, contactsRect.bottom);
         Rectangle(hdc, convRect.left, convRect.top, convRect.right, convRect.bottom);
-        DeleteObject(whitePen);
+        SelectObject(hdc, oldBoxPen);
 
         SetTextColor(hdc, kColBtnText);
-        HFONT smallFont = CreateFontA(-11, 0, 0, 0, FW_NORMAL, FALSE, FALSE, FALSE,
-                                      ANSI_CHARSET, OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS,
-                                      DEFAULT_QUALITY, FIXED_PITCH | FF_MODERN, "Courier New");
+        HFONT smallFont = cachedFont(-11, FW_NORMAL, "Courier New", FIXED_PITCH | FF_MODERN);
         SelectObject(hdc, smallFont);
 
         int yOff = contactsRect.top + 4;
@@ -959,12 +1431,11 @@ protected:
             bool selected = (pair.first == selectedContact_);
             if (selected)
             {
-                HBRUSH selBrush = CreateSolidBrush(rgb(0, 80, 120));
+                HBRUSH selBrush = cachedBrush(rgb(0, 80, 120));
                 FillRect(hdc, &contactItem, selBrush);
-                DeleteObject(selBrush);
             }
             DrawTextA(hdc, pair.first.c_str(), -1, &contactItem, DT_LEFT | DT_VCENTER | DT_SINGLELINE);
-            AddScreenObject(kObjButton, ("CONTACT_" + pair.first).c_str(), contactItem, false, pair.first.c_str());
+            addScreenObjectStable(kObjButton, "CONTACT_" + pair.first, contactItem, false, pair.first);
             yOff += 18;
         }
 
@@ -985,9 +1456,8 @@ protected:
 
         drawBtn(hdc, sendRect.left, sendRect.top, rectW(sendRect), rectH(sendRect), "SEND", false);
         AddScreenObject(kObjButton, "MSG_SEND", sendRect, false, "Send message");
-        HBRUSH inputBrush = CreateSolidBrush(rgb(224, 224, 214));
+        HBRUSH inputBrush = cachedBrush(rgb(224, 224, 214));
         FillRect(hdc, &inputHintRect, inputBrush);
-        DeleteObject(inputBrush);
         SetTextColor(hdc, rgb(0, 0, 0));
         RECT inputTextRect = { inputHintRect.left + 5, inputHintRect.top,
                                inputHintRect.right - 5, inputHintRect.bottom };
@@ -998,8 +1468,6 @@ protected:
         AddScreenObject(kObjButton, "MSG_NEW_DM", newDmRect, false, "New direct message");
 
         SelectObject(hdc, oldFont);
-        DeleteObject(titleFont);
-        DeleteObject(smallFont);
     }
 
     bool handleMessagesPopupClick(const std::string &objId, POINT pt, RECT area)
@@ -1105,7 +1573,7 @@ protected:
 
     void drawSearchHighlight(HDC hdc)
     {
-        HPEN dashPen = CreatePen(PS_DASH, 1, rgb(180, 180, 180));
+        HPEN dashPen = cachedPen(PS_DASH, 1, rgb(180, 180, 180));
         HPEN oldPen = static_cast<HPEN>(SelectObject(hdc, dashPen));
         HBRUSH brush = static_cast<HBRUSH>(GetStockObject(NULL_BRUSH));
         HBRUSH oldBr = static_cast<HBRUSH>(SelectObject(hdc, brush));
@@ -1124,7 +1592,6 @@ protected:
         LineTo  (hdc, c.x - 2, c.y - r - 8);
         SelectObject(hdc, oldPen);
         SelectObject(hdc, oldBr);
-        DeleteObject(dashPen);
     }
 
     void drawSelectedRoute(HDC hdc)
@@ -1134,7 +1601,7 @@ protected:
         EuroScopePlugIn::CFlightPlanExtractedRoute route = fp.GetExtractedRoute();
         int n = route.GetPointsNumber();
         if (n < 2) return;
-        HPEN pen = CreatePen(PS_SOLID, 2, rgb(0, 220, 80));
+        HPEN pen = cachedPen(PS_SOLID, 2, rgb(0, 220, 80));
         HPEN oldPen = static_cast<HPEN>(SelectObject(hdc, pen));
         for (int i = 0; i < n - 1; ++i)
         {
@@ -1144,13 +1611,12 @@ protected:
             LineTo  (hdc, p2.x, p2.y);
         }
         SelectObject(hdc, oldPen);
-        DeleteObject(pen);
     }
 
     void drawQDMLine(HDC hdc)
     {
         if (!qdmLineValid_) return;
-        HPEN pen = CreatePen(PS_SOLID, 2, rgb(255, 255, 0));
+        HPEN pen = cachedPen(PS_SOLID, 2, rgb(255, 255, 0));
         HPEN oldPen = static_cast<HPEN>(SelectObject(hdc, pen));
         POINT p1 = ConvertCoordFromPositionToPixel(qdmPoint1_);
         POINT p2 = ConvertCoordFromPositionToPixel(qdmPoint2_);
@@ -1163,16 +1629,11 @@ protected:
         snprintf(buf, sizeof(buf), "QDM %.1f\xB0", bearing);
         SetBkMode   (hdc, TRANSPARENT);
         SetTextColor(hdc, rgb(255, 255, 0));
-        HFONT fnt = CreateFontA(-11, 0,0,0, FW_BOLD, FALSE,FALSE,FALSE,
-                                ANSI_CHARSET, OUT_DEFAULT_PRECIS,
-                                CLIP_DEFAULT_PRECIS, DEFAULT_QUALITY,
-                                FIXED_PITCH|FF_MODERN, "Courier New");
+        HFONT fnt = cachedFont(-11, FW_BOLD, "Courier New", FIXED_PITCH | FF_MODERN);
         HFONT oldFnt = static_cast<HFONT>(SelectObject(hdc, fnt));
         TextOutA(hdc, mx + 4, my - 14, buf, (int)strlen(buf));
         SelectObject(hdc, oldFnt);
-        DeleteObject(fnt);
         SelectObject(hdc, oldPen);
-        DeleteObject(pen);
     }
 
     void handleButton(const std::string &s, POINT pt, RECT area)
@@ -1186,16 +1647,41 @@ protected:
             message(rteEnabled_ ? "TopSky route draw ON" : "TopSky route draw OFF");
             toggleTopSkyRte(pt, area);
         }
+        else if (s == "ABS AIR")
+        {
+            absAirEnabled_ = !absAirEnabled_;
+            showAirspace_ = absAirEnabled_;
+            applySectorType(EuroScopePlugIn::SECTOR_ELEMENT_AIRSPACE, showAirspace_);
+            RefreshMapContent();
+            message(absAirEnabled_ ? "Airspace display ON" : "Airspace display OFF");
+        }
         else if (s == "CPDLC")           openCpdlcWindows(pt, area);
+        else if (s == "LM 0")            toggleLatchedButton(lm0Enabled_, "LM 0");
+        else if (s == "RINGS")           toggleLatchedButton(ringsEnabled_, "Range rings");
         else if (s == "SEP")             openSepTool(pt, area);
         else if (s == "METEO")           showMetPopup(area);
         else if (s == "MTCD")            toggleMTCD();
         else if (s == "ALM OFF")         { alarmEnabled_ = !alarmEnabled_; message(alarmEnabled_ ? "Alarm sounds ON" : "Alarm sounds OFF"); }
         else if (s == "AREAS" || s == "SECTORS") showDisplaySettingsPicker(area);
+        else if (s == "ELW")             toggleLatchedButton(elwEnabled_, "ELW");
+        else if (s == "RBL")             toggleLatchedButton(rblEnabled_, "RBL");
+        else if (s == "OBI")             toggleLatchedButton(obiEnabled_, "OBI");
         else if (s == "DATBLK")          showTagFamilyPicker(area);
+        else if (s == "BRIGHT")          toggleLatchedButton(brightEnabled_, "Bright mode");
+        else if (s == "F 3D")            toggleLatchedButton(f3dEnabled_, "F 3D");
+        else if (s == "RBL ALM")         toggleLatchedButton(rblAlarmEnabled_, "RBL alarm");
+        else if (s == "OVERLAP")         toggleLatchedButton(overlapEnabled_, "Overlap");
+        else if (s == "FREETEXT")
+        {
+            showFreeText_ = !showFreeText_;
+            applySectorType(EuroScopePlugIn::SECTOR_ELEMENT_FREE_TEXT, showFreeText_);
+            RefreshMapContent();
+            message(showFreeText_ ? "Free text display ON" : "Free text display OFF");
+        }
         else if (s == "FINDER")          showFinderPopup(area);
         else if (s == "SSR F")           showSSRFPopup(area);
-        else if (s == "USERS")           { /* intentionally no-op */ }
+        else if (s == "LAST POS")        centerScreen();
+        else if (s == "USERS")           openConnectionDialog(pt, area);
         else if (s == "VIEW1")           applyView("VIEW1");
         else if (s == "VIEW2")           applyView("VIEW2");
         else if (s == "CEN")             centerScreen();
@@ -1212,8 +1698,15 @@ protected:
         RequestRefresh();
     }
 
+    void toggleLatchedButton(bool &state, const char *label)
+    {
+        state = !state;
+        message(std::string(label) + (state ? " ON" : " OFF"));
+    }
+
     void applyView(const std::string &button)
     {
+        updateDataPosition();
         views_ = loadViewsJson();
         for (const auto &v : views_)
         {
@@ -1245,6 +1738,7 @@ protected:
 
     void saveCurrentView(const std::string &button)
     {
+        updateDataPosition();
         ViewDef v;
         v.button = button;
         v.name   = "User " + button;
@@ -1633,10 +2127,40 @@ protected:
     void updateControllerAirport()
     {
         EuroScopePlugIn::CController me = GetPlugIn()->ControllerMyself();
-        if (!me.IsValid()) return;
+        if (!me.IsValid())
+        {
+            controllerAirport_.clear();
+            return;
+        }
         std::string cs = me.GetCallsign();
+        if (cs.empty())
+        {
+            controllerAirport_.clear();
+            return;
+        }
         std::size_t u = cs.find('_');
         controllerAirport_ = (u != std::string::npos) ? cs.substr(0, u) : cs;
+    }
+
+    void updateDataPosition()
+    {
+        EuroScopePlugIn::CController me = GetPlugIn()->ControllerMyself();
+        if (!me.IsValid())
+        {
+            controllerAirport_.clear();
+            setActiveDataPosition("");
+            return;
+        }
+        std::string cs = me.GetCallsign();
+        if (cs.empty())
+        {
+            controllerAirport_.clear();
+            setActiveDataPosition("");
+            return;
+        }
+        std::size_t u = cs.find('_');
+        controllerAirport_ = (u != std::string::npos) ? cs.substr(0, u) : cs;
+        setActiveDataPosition(cs);
     }
 
     void applySectorType(int elementType, bool visible)

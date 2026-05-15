@@ -103,7 +103,8 @@ enum FunctionId
     FN_MESSAGES_SEND,
     FN_MESSAGES_NEW_DM,
     FN_ZOOM_NM_EDIT,
-    FN_SEP_TOOL
+    FN_SEP_TOOL,
+    FN_VACS_CUSTOM
 };
 
 struct ViewDef
