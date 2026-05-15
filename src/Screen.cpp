@@ -1,7 +1,5 @@
 #include "Screen.h"
 #include "Storage.h"
-#include "Contact.h"
-#include "VacsManager.h"
 
 namespace Indra
 {
@@ -62,7 +60,7 @@ public:
           hasUnreadMessages_(false),
           unreadFlashTick_(0),
           vacsShowMenu_(false),
-          vacsExecutiveSelected_(true)
+          vacsRole_(0)
     {
         views_     = loadViewsJson();
         popupRect_ = {120, 120, 550, 430};
@@ -210,44 +208,24 @@ public:
         if (objType != kObjButton || !objId) return;
         std::string s = objId;
 
-        // ---- VACS quick-call menu ----------------------------------------
         if (button == EuroScopePlugIn::BUTTON_LEFT)
         {
-            if (s == "EXECUTIVE")
+            int role = (s == "EXECUTIVE") ? 0 : (s == "PLANNER") ? 1 : -1;
+            if (role >= 0)
             {
-                if (vacsShowMenu_ && vacsExecutiveSelected_)
-                    vacsShowMenu_ = false;
-                else
-                {
-                    vacsShowMenu_          = true;
-                    vacsExecutiveSelected_ = true;
-                }
+                vacsShowMenu_ = !(vacsShowMenu_ && vacsRole_ == role);
+                vacsRole_     = role;
                 RequestRefresh();
                 return;
             }
-            if (s == "PLANNER")
-            {
-                if (vacsShowMenu_ && !vacsExecutiveSelected_)
-                    vacsShowMenu_ = false;
-                else
-                {
-                    vacsShowMenu_          = true;
-                    vacsExecutiveSelected_ = false;
-                }
-                RequestRefresh();
-                return;
-            }
-            // Contact button IDs are "VACS_0", "VACS_1", etc.
             if (s.size() > 5 && s.substr(0, 5) == "VACS_")
             {
-                int idx = 0;
-                try { idx = std::stoi(s.substr(5)); } catch (...) { return; }
+                int idx = atoi(s.c_str() + 5);
                 if (idx >= 0 && idx < static_cast<int>(vacsContacts_.size()))
-                    vacsManager_.StartVacsCall(vacsContacts_[idx].station);
+                    vacsCall(vacsContacts_[idx].station);
                 return;
             }
         }
-        // -----------------------------------------------------------------
 
         static const std::vector<std::string> viewButtons = {"S","0","1/2","1","3","5","8","VIEW1","VIEW2"};
         bool isView = false;
@@ -500,9 +478,8 @@ protected:
 
     // VACS quick-call menu state
     std::vector<Contact> vacsContacts_;
-    VacsManager          vacsManager_;
-    bool                 vacsShowMenu_          = false;
-    bool                 vacsExecutiveSelected_ = true; // true=Executive, false=Planner
+    bool                 vacsShowMenu_ = false;
+    int                  vacsRole_     = 0;
 
     void loadBool(const char *key, bool &value)
     {
@@ -744,83 +721,26 @@ protected:
         drawBottomRightBranding(hdc, bar);
     }
 
-    // ------------------------------------------------------------------
-    // VACS quick-call UI
-    // ------------------------------------------------------------------
-
-    // Draws the two permanent EXECUTIVE / PLANNER buttons (same geometry as
-    // other vertical groups) and, when the menu is open, the contact grid.
     void drawVacsGroup(HDC hdc, int x, int y, int colW, int totalH)
     {
         int h3 = totalH / 3;
-
-        // Executive button (top slot)
-        bool execActive = vacsShowMenu_ && vacsExecutiveSelected_;
-        drawBtn(hdc, x, y,        colW, h3, "EXECUTIVE", execActive);
-
-        // Planner button (middle slot)
-        bool planActive = vacsShowMenu_ && !vacsExecutiveSelected_;
-        drawBtn(hdc, x, y + h3,   colW, h3, "PLANNER",   planActive);
-
-        // Bottom slot left blank (matches other groups that have 2 entries)
-
-        // If either button is active, draw the contact grid to the right
+        drawBtn(hdc, x, y,      colW, h3, "EXECUTIVE", vacsShowMenu_ && vacsRole_ == 0);
+        drawBtn(hdc, x, y + h3, colW, h3, "PLANNER",   vacsShowMenu_ && vacsRole_ == 1);
         if (vacsShowMenu_)
             drawCallMenu(hdc, x + colW + kBtnGap, y, totalH);
     }
 
-    // Draws VACS contacts in a 2-column grid starting at (menuX, menuY).
-    // Each contact button is registered as a screen object with ID "VACS_N".
     void drawCallMenu(HDC hdc, int menuX, int menuY, int totalH)
     {
-        if (vacsContacts_.empty()) return;
-
-        const int btnW  = 90;
-        const int btnH  = totalH / 3;   // match the per-row height of the bar
-        const int gap   = kBtnGap;
-        const int cols  = 2;
-
+        const int btnW = 90, btnH = totalH / 3;
         for (int i = 0; i < static_cast<int>(vacsContacts_.size()); ++i)
         {
-            int col = i % cols;
-            int row = i / cols;
-            int bx  = menuX + col * (btnW + gap);
-            int by  = menuY + row * (btnH + gap);
-
-            // Use a slightly brighter face to distinguish contact buttons
-            RECT r = { bx, by, bx + btnW, by + btnH };
-            fillSolid(hdc, r, kColBtnFace);
-
-            // Bevel edges (same style as drawBtn)
-            HPEN hiPen = CreatePen(PS_SOLID, 1, kColBtnHiEdge);
-            HPEN shPen = CreatePen(PS_SOLID, 1, kColBtnShEdge);
-            HPEN oldPen = static_cast<HPEN>(SelectObject(hdc, hiPen));
-            MoveToEx(hdc, r.left,      r.bottom - 1, nullptr);
-            LineTo  (hdc, r.left,      r.top);
-            LineTo  (hdc, r.right - 1, r.top);
-            SelectObject(hdc, shPen);
-            MoveToEx(hdc, r.right - 1, r.top,        nullptr);
-            LineTo  (hdc, r.right - 1, r.bottom - 1);
-            LineTo  (hdc, r.left,      r.bottom - 1);
-            SelectObject(hdc, oldPen);
-            DeleteObject(hiPen);
-            DeleteObject(shPen);
-
-            SetBkMode   (hdc, TRANSPARENT);
-            SetTextColor(hdc, kColBtnText);
-            HFONT font = CreateFontA(-10, 0, 0, 0, FW_NORMAL, FALSE, FALSE, FALSE,
-                                     ANSI_CHARSET, OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS,
-                                     DEFAULT_QUALITY, FIXED_PITCH | FF_MODERN, "Courier New");
-            HFONT oldFont = static_cast<HFONT>(SelectObject(hdc, font));
-            DrawTextA(hdc, vacsContacts_[i].name.c_str(), -1, &r,
-                      DT_CENTER | DT_VCENTER | DT_SINGLELINE | DT_END_ELLIPSIS);
-            SelectObject(hdc, oldFont);
-            DeleteObject(font);
-
-            // Register the clickable region; ID = "VACS_N"
-            std::string objId = "VACS_" + std::to_string(i);
-            AddScreenObject(kObjButton, objId.c_str(), r, false,
-                            vacsContacts_[i].station.c_str());
+            int bx = menuX + (i % 2) * (btnW + kBtnGap);
+            int by = menuY + (i / 2) * (btnH + kBtnGap);
+            std::string id = "VACS_" + std::to_string(i);
+            drawBtn(hdc, bx, by, btnW, btnH, vacsContacts_[i].name.c_str(), false);
+            AddScreenObject(kObjButton, id.c_str(), {bx, by, bx+btnW, by+btnH},
+                            false, vacsContacts_[i].station.c_str());
         }
     }
 

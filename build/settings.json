@@ -1,20 +1,16 @@
 {
   "contacts": [
     {
-      "name": "Heathrow TWR",
-      "station": "EGLL_TWR"
+      "name": "DAAG_TWR",
+      "station": "DAAG_TWR"
     },
     {
-      "name": "Heathrow GND",
-      "station": "EGLL_GND"
+      "name": "DAAA_NC_CTR",
+      "station": "DAAA_NC_CTR"
     },
     {
-      "name": "London Control",
-      "station": "LON_S_CTR"
-    },
-    {
-      "name": "Director",
-      "station": "EGLL_APP"
+      "name": "DAAG_GND",
+      "station": "DAAG_GND"
     }
   ]
 }

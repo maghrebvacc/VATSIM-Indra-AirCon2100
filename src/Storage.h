@@ -1,6 +1,5 @@
 #pragma once
 #include "Common.h"
-#include "Contact.h"
 
 namespace Indra
 {
@@ -15,8 +14,10 @@ bool jsonNumber(const std::string &obj, const char *key, double &out);
 std::vector<ViewDef> loadViewsJson(const std::string &filename = "indra_saved_views.json");
 void saveViewToJson(const std::string &button, const ViewDef &view);
 
-// Loads VACS contacts from settings.json in the data directory.
-// Returns an empty vector if the file is missing or malformed.
+struct Contact { std::string name, station; };
+
 std::vector<Contact> loadContactsJson(const std::string &filename = "settings.json");
+
+void vacsCall(const std::string &station);
 
 } // namespace Indra
