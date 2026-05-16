@@ -5,7 +5,7 @@
 ---
 
 ### Currently know bugs
-- Popout windows being partially illegable (Will change to black text)
+- Popout windows being partially illegible (Will change to black text)
 - 'CEN' Button not working
 - Unable to 'Answer' Incoming vacs calls 
 
