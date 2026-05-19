@@ -1,30 +1,33 @@
 # INDRA Plugin VATSIM
 
-## Release version
+## Beta Version
 
-In order to get everything to work in the release version along side the DLL file, there should be a file called "indra_saved_views.json"
-an example of which is shown bellow:
-```[
-{"button":"S","name":"View S","zoomNm":120,"centerLat":36.692194444444,"centerLon":3.2151111111111},
-{"button":"0","name":"View 0","zoomNm":80,"centerLat":36.692194444444,"centerLon":3.2151111111111},
-{"button":"1/2","name":"View 1/2","zoomNm":60,"centerLat":36.692194444444,"centerLon":3.2151111111111},
-{"button":"1","name":"View 1","zoomNm":100,"centerLat":36.692194444444,"centerLon":3.2151111111111},
-{"button":"3","name":"View 3","zoomNm":150,"centerLat":36.692194444444,"centerLon":3.2151111111111},
-{"button":"5","name":"View 5","zoomNm":200,"centerLat":36.692194444444,"centerLon":3.2151111111111},
-{"button":"8","name":"View 8","zoomNm":250,"centerLat":36.692194444444,"centerLon":3.2151111111111},
-{"button":"VIEW1","name":"View 1","zoomNm":120,"centerLat":36.692194444444,"centerLon":3.2151111111111},
-{"button":"VIEW2","name":"View 2","zoomNm":300,"centerLat":36.692194444444,"centerLon":3.2151111111111}
-]
-```
+---
 
-this defines the views each button will go to when they are clicked 
+### bug reports:
+- Within Maghreb vACC - Use 'Ops suggestions' thread
+- Outside of Maghreb vACC - Make a issue using the bug report template
+
+---
+### vacs
+
+The main difference between the Release and Beta versions as of version `1.0.1` is that the beta version has vacs support,
+
+in order for this to work the user must have vacs open with **remote control enabled**
+
+The way you do this is by going Settings -> Advanced settings -> and ensure it looks like the image bellow, if there is any issues with the base 0.0.0.0:9600, please change to 127.0.0.1:9600 (There shouldnt be)
+<img width="366" height="112" alt="image" src="https://github.com/user-attachments/assets/ffe0cdac-5c22-4446-b869-ff13bbb493bc" />
 
 
-<img width="1918" height="365" alt="vINDRA" src="https://github.com/user-attachments/assets/50a8c4c0-f514-47c1-971e-cabb2ccd2a1a" />
+An example image is shown bellow with the usage of each button
 
+---
+<img width="2000" height="50" alt="image Cropped" src="https://github.com/user-attachments/assets/4c73309c-6cb8-4fab-aef9-e8a5af9a5f35" />
+
+---
 Currently (Version v0.1.4) some buttons do not work, a list is shown bellow:
 
-- Executive / Planner - Nothing (Beta version implements vacs)
+- Executive / Planner - Opens the vacs menu where the user can call people, take incoming calls and hang up
 - ARR / DEP - filter showing arrivals / departures (only works for APP / TWR)
 - FPL - opens the selected aircrafts Euroscope flightplan
 - CPDLC - Nothing
@@ -37,15 +40,16 @@ Currently (Version v0.1.4) some buttons do not work, a list is shown bellow:
 - ELW - Nothing
 - RTE - shows the Topsky route of the aircraft (Topsky **MUST** be loaded for this feature to work)
 - RBL / OBI - Nothing
-- DATBLK - Nothing as of now (planned change the Tag family)
+- DATBLK - Nothing as of now (planned change the Tag family) (says it does something but ignore it)
 - BRIGHT / F 3D - Nothing
-- QDM - Draw a SQM
+- QDM - Draw a QDM
 - SEP - Opens the Euroscope Seperate tool with VSEP
 - METEO - opens a pannel with your selected metars (Full metar)(Read from euroscope)
 - RBL ALM - Nothing
 - MTCD - Toggles MTCD
 - ALM - Turns on / off the conflict alarm within euroscope
-- OVERLAP / FREETEXT - Nothing
+- OVERLAP - Nothing
+- FREETEXT - Enters a topsky remark in the selected aircrafts tag
 - Sectors - Lets the user turn on / off different visibility of things from the 'Display menu' within euroscope
 - Last pos - Nothing
 - FINDER - Search an aircrafts callsign that is within view and it will draw a circle around and line to that aircraft
