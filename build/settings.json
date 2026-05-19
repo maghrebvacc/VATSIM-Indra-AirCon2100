@@ -15,6 +15,20 @@
     {
       "name": "OOMS_APP",
       "station": "OOMS_APP"
+    },
+    {
+      "name": "GULF",
+      "station": "GULF_E_FSS"
+    }
+  ],
+  "DAUE_TWR": [
+    {
+      "name": "GULF",
+      "station": "GULF_E_FSS"
+    },
+        {
+      "name": "OERK",
+      "station": "OERK_E_TWR"
     }
   ]
 }

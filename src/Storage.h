@@ -35,6 +35,7 @@ struct VacsCallStatus
     VacsCallUiState state = VacsCallUiState::Idle;
     std::string     callId;
     std::string     target;
+    bool            incoming = false;
 };
 
 class VacsManager
@@ -51,7 +52,10 @@ private:
     std::string activeCallId_;
     std::string incomingCallId_;
     std::string activeTarget_;
+    bool        activeIncomingCall_;
     bool        activeCall_;
+    bool        ringingCall_;
+    unsigned    ringingMissingPolls_;
     unsigned    nextRequestId_;
 
     bool invoke(const std::string &command,

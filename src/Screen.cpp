@@ -5,6 +5,7 @@ namespace Indra
 {
 
 static constexpr bool kLowResourceMode = false;
+static constexpr DWORD kVacsFlashMs = 250;
 
 class IndraApcScreen : public EuroScopePlugIn::CRadarScreen
 {
@@ -55,11 +56,6 @@ public:
           searchExpireTick_(0),
           searchLineValid_(false),
           messagesToggled_(false),
-          lastUsersClickTick_(0),
-          pendingConnectionDialog_(false),
-          pendingConnectionDialogTick_(0),
-          pendingCommandClear_(false),
-          pendingCommandClearTick_(0),
           vacsShowMenu_(false),
           vacsRole_(0),
           vacsCallState_(VacsCallUiState::Idle),
@@ -67,6 +63,7 @@ public:
           vacsFailedPollTick_(0),
           vacsDeferredPoll_(false),
           vacsDeferredPollTick_(0),
+          vacsLastFlashRefreshTick_(0),
           zoomLastCalcTick_(0)
     {
         vacsContacts_ = loadContactsJson();
@@ -146,8 +143,6 @@ public:
         SetBkMode(hdc, TRANSPARENT);
         processHeldViewButtons();
         expireSearchHighlight();
-        processPendingConnectionDialog();
-        processPendingCommandClear();
 
         pollVacsState(false);
         if (kLowResourceMode)
@@ -158,6 +153,7 @@ public:
         {
             drawBottomBar(hdc);
         }
+        scheduleVacsFlashRefresh();
         if (searchCircleValid_) drawSearchHighlight(hdc);
         if (qdmLineValid_)      drawQDMLine(hdc);
     }
@@ -169,7 +165,6 @@ public:
         while (*arg == ' ') ++arg;
         if      (_stricmp(arg, "off") == 0) overlayEnabled_ = false;
         else if (_stricmp(arg, "on")  == 0 || *arg == 0) overlayEnabled_ = true;
-        else    message(".indra on | off");
         saveSettings();
         return true;
     }
@@ -247,8 +242,18 @@ public:
             if (s == "INCOMING")
             {
                 if (vacsCallState_ == VacsCallUiState::IncomingRinging)
-                    vacsManager_.AcceptIncomingCall();
-                else if (vacsCallState_ == VacsCallUiState::Active && vacsStatus_.target.empty())
+                {
+                    if (vacsManager_.AcceptIncomingCall())
+                    {
+                        vacsCallState_ = VacsCallUiState::Active;
+                        vacsStatus_.state = VacsCallUiState::Active;
+                        vacsStatus_.incoming = true;
+                        vacsLastPollTick_ = GetTickCount();
+                        RequestRefresh();
+                        return;
+                    }
+                }
+                else if (isActiveVacsCall())
                     vacsManager_.EndCurrentCall();
                 vacsLastPollTick_ = 0;
                 pollVacsState(true);
@@ -257,7 +262,7 @@ public:
             }
             if (s == "VACS_CUSTOM")
             {
-                if (isCurrentCustomVacsTarget())
+                if (isActiveVacsCall())
                 {
                     vacsManager_.EndCurrentCall();
                     vacsLastPollTick_ = 0;
@@ -276,7 +281,9 @@ public:
                 int idx = atoi(s.c_str() + 5);
                 if (idx >= 0 && idx < static_cast<int>(vacsContacts_.size()))
                 {
-                    if (isCurrentVacsTarget(vacsContacts_[idx].station))
+                    if (isActiveVacsCall())
+                        vacsManager_.EndCurrentCall();
+                    else if (isCurrentVacsTarget(vacsContacts_[idx].station))
                         vacsManager_.EndCurrentCall();
                     else
                         vacsManager_.StartVacsCall(vacsContacts_[idx].station);
@@ -351,7 +358,6 @@ public:
         case FN_DISPLAY_TOGGLE:
             if (itemString && *itemString) onDisplayToggle(itemString);
             break;
-        case FN_METEO:        break;
         case FN_MTCD_TOGGLE:
             mtcdEnabled_ = !mtcdEnabled_;
             GetPlugIn()->OnCompileCommand(mtcdEnabled_ ? ".mtcd on" : ".mtcd off");
@@ -386,10 +392,6 @@ public:
         case FN_LOAD_VIEW_3:  applyView("3");          break;
         case FN_LOAD_VIEW_5:  applyView("5");          break;
         case FN_LOAD_VIEW_8:  applyView("8");          break;
-        case FN_MESSAGES_SEND:
-            break;
-        case FN_MESSAGES_NEW_DM:
-            break;
         case FN_VACS_CUSTOM:
             if (itemString && *itemString)
             {
@@ -463,12 +465,6 @@ protected:
     int         currentZoom_;
     std::string controllerAirport_;
 
-    DWORD       lastUsersClickTick_;
-    bool        pendingConnectionDialog_;
-    DWORD       pendingConnectionDialogTick_;
-    bool        pendingCommandClear_;
-    DWORD       pendingCommandClearTick_;
-
     std::map<std::string, DWORD> pressStartTime_;
     std::map<std::string, bool>   longPressTriggered_;
 
@@ -483,6 +479,7 @@ protected:
     DWORD                vacsFailedPollTick_ = 0;
     bool                 vacsDeferredPoll_ = false;
     DWORD                vacsDeferredPollTick_ = 0;
+    DWORD                vacsLastFlashRefreshTick_ = 0;
     DWORD                zoomLastCalcTick_ = 0;
     std::vector<std::string> screenObjectStrings_;
 
@@ -542,42 +539,6 @@ protected:
         SaveDataToAsr("INDRA_APC_TAGFAMILY",      "tagfamily",  std::to_string(currentTagFamily_).c_str());
     }
 
-    void message(const std::string &)
-    {
-    }
-
-    void sendEuroScopeCommand(const std::string &command)
-    {
-        std::vector<INPUT> inputs;
-        auto key = [&inputs](WORD vk, DWORD flags = 0) {
-            INPUT in = {};
-            in.type = INPUT_KEYBOARD;
-            in.ki.wVk = vk;
-            in.ki.dwFlags = flags;
-            inputs.push_back(in);
-        };
-        auto unicodeChar = [&inputs](char ch, DWORD flags = 0) {
-            INPUT in = {};
-            in.type = INPUT_KEYBOARD;
-            in.ki.wScan = static_cast<WORD>(static_cast<unsigned char>(ch));
-            in.ki.dwFlags = KEYEVENTF_UNICODE | flags;
-            inputs.push_back(in);
-        };
-
-        key(VK_ESCAPE);
-        key(VK_ESCAPE, KEYEVENTF_KEYUP);
-        for (char ch : command)
-        {
-            unicodeChar(ch);
-            unicodeChar(ch, KEYEVENTF_KEYUP);
-        }
-        key(VK_RETURN);
-        key(VK_RETURN, KEYEVENTF_KEYUP);
-
-        if (!inputs.empty())
-            SendInput(static_cast<UINT>(inputs.size()), inputs.data(), sizeof(INPUT));
-    }
-
     RECT bottomBarArea()
     {
         RECT radar = GetRadarArea();
@@ -588,13 +549,23 @@ protected:
         return result;
     }
 
-    void pollVacsState(bool force)
+    void scheduleVacsFlashRefresh()
     {
-        if (!force &&
-            !vacsShowMenu_ &&
-            vacsCallState_ == VacsCallUiState::Idle)
+        if (vacsCallState_ != VacsCallUiState::IncomingRinging &&
+            vacsCallState_ != VacsCallUiState::OutgoingRinging)
             return;
 
+        DWORD now = GetTickCount();
+        if (vacsLastFlashRefreshTick_ != 0 &&
+            now - vacsLastFlashRefreshTick_ < kVacsFlashMs)
+            return;
+
+        vacsLastFlashRefreshTick_ = now;
+        RequestRefresh();
+    }
+
+    void pollVacsState(bool force)
+    {
         DWORD now = GetTickCount();
         if (!force && vacsDeferredPoll_)
         {
@@ -603,24 +574,29 @@ protected:
             vacsDeferredPoll_ = false;
         }
 
-        DWORD interval = 30000;
+        DWORD interval = 3000;
         if (vacsCallState_ == VacsCallUiState::IncomingRinging ||
             vacsCallState_ == VacsCallUiState::OutgoingRinging)
-            interval = 3000;
+            interval = 1000;
         else if (vacsCallState_ == VacsCallUiState::Active)
-            interval = 10000;
+            interval = 1000;
 
-        if (!force && vacsFailedPollTick_ != 0 && now - vacsFailedPollTick_ < 60000)
+        if (!force && vacsFailedPollTick_ != 0 && now - vacsFailedPollTick_ < 5000)
             return;
 
         if (!force && vacsLastPollTick_ != 0 && now - vacsLastPollTick_ < interval)
             return;
 
         vacsLastPollTick_ = now;
+        VacsCallUiState previousState = vacsCallState_;
+        std::string previousCallId = vacsStatus_.callId;
         if (vacsManager_.RefreshCallStatus(vacsStatus_))
         {
             vacsCallState_ = vacsStatus_.state;
             vacsFailedPollTick_ = 0;
+            if (!force &&
+                (previousState != vacsCallState_ || previousCallId != vacsStatus_.callId))
+                RequestRefresh();
         }
         else
         {
@@ -640,12 +616,50 @@ protected:
     bool isOutgoingOrActiveVacsCall() const
     {
         return vacsCallState_ == VacsCallUiState::OutgoingRinging ||
-               vacsCallState_ == VacsCallUiState::Active;
+               (vacsCallState_ == VacsCallUiState::Active && !vacsStatus_.incoming);
+    }
+
+    bool isActiveVacsCall() const
+    {
+        return vacsCallState_ == VacsCallUiState::Active;
+    }
+
+    bool isIncomingActiveVacsCall() const
+    {
+        return vacsCallState_ == VacsCallUiState::Active && vacsStatus_.incoming;
+    }
+
+    bool isIncomingVacsCall() const
+    {
+        return vacsCallState_ == VacsCallUiState::IncomingRinging ||
+               isIncomingActiveVacsCall();
+    }
+
+    bool shouldFlashVacsIncoming() const
+    {
+        return vacsCallState_ == VacsCallUiState::IncomingRinging &&
+               (((GetTickCount() / kVacsFlashMs) % 2) == 0);
+    }
+
+    COLORREF incomingVacsFaceColor() const
+    {
+        if (isIncomingActiveVacsCall()) return rgb(0, 160, 0);
+        if (shouldFlashVacsIncoming()) return rgb(0, 180, 0);
+        return kColBtnFace;
+    }
+
+    COLORREF incomingVacsTextColor() const
+    {
+        return isIncomingVacsCall() && (isIncomingActiveVacsCall() || shouldFlashVacsIncoming())
+            ? rgb(255, 255, 255)
+            : kColBtnText;
     }
 
     bool isCurrentVacsTarget(const std::string &station) const
     {
-        return isOutgoingOrActiveVacsCall() &&
+        return (vacsCallState_ == VacsCallUiState::IncomingRinging ||
+                vacsCallState_ == VacsCallUiState::OutgoingRinging ||
+                vacsCallState_ == VacsCallUiState::Active) &&
                !vacsStatus_.target.empty() &&
                normalizedCallsign(station) == normalizedCallsign(vacsStatus_.target);
     }
@@ -662,9 +676,24 @@ protected:
 
     bool isCurrentCustomVacsTarget() const
     {
-        return isOutgoingOrActiveVacsCall() &&
+        return (vacsCallState_ == VacsCallUiState::IncomingRinging ||
+                vacsCallState_ == VacsCallUiState::OutgoingRinging ||
+                vacsCallState_ == VacsCallUiState::Active) &&
                !vacsStatus_.target.empty() &&
                !targetIsConfiguredContact();
+    }
+
+    bool shouldFlashVacsTarget() const
+    {
+        return (vacsCallState_ == VacsCallUiState::IncomingRinging ||
+                vacsCallState_ == VacsCallUiState::OutgoingRinging) &&
+               (((GetTickCount() / kVacsFlashMs) % 2) == 0);
+    }
+
+    COLORREF currentVacsTargetFaceColor(bool flash, bool solid) const
+    {
+        if (!flash && !solid) return kColBtnFace;
+        return vacsStatus_.incoming ? rgb(0, 160, 0) : rgb(0, 96, 210);
     }
 
     bool isViewButton(const std::string &value) const
@@ -679,9 +708,17 @@ protected:
     void drawLowResourceButton(HDC hdc, const std::string &id, const char *label,
                                RECT r, bool active)
     {
-        fillSolid(hdc, r, active ? rgb(0, 86, 150) : kColBtnFace);
+        drawLowResourceButtonEx(hdc, id, label, r,
+                                active ? rgb(0, 86, 150) : kColBtnFace,
+                                active ? rgb(255, 255, 255) : kColBtnText);
+    }
+
+    void drawLowResourceButtonEx(HDC hdc, const std::string &id, const char *label,
+                                 RECT r, COLORREF face, COLORREF text)
+    {
+        fillSolid(hdc, r, face);
         FrameRect(hdc, &r, reinterpret_cast<HBRUSH>(GetStockObject(GRAY_BRUSH)));
-        SetTextColor(hdc, active ? rgb(255, 255, 255) : kColBtnText);
+        SetTextColor(hdc, text);
         DrawTextA(hdc, label, -1, &r, DT_CENTER | DT_VCENTER | DT_SINGLELINE | DT_END_ELLIPSIS);
         addScreenObjectStable(kObjButton, id, r, false, label);
     }
@@ -689,14 +726,22 @@ protected:
     void drawLowResourceBottomBar(HDC hdc)
     {
         RECT bar = bottomBarArea();
-        fillSolid(hdc, bar, kColBarBg);
+        const int colW = 58;
+        const int h = 20;
+        const int gap = 4;
+        int reservedX = bar.left + 6;
+        int reservedW = colW + gap;
+
+        // When messages toggled, grey background starts at ARR/DEP (after reserved space)
+        int arrDepX = reservedX + reservedW;
+        RECT bgRect = messagesToggled_
+            ? RECT{ arrDepX, bar.top, bar.right, bar.bottom }
+            : bar;
+        fillSolid(hdc, bgRect, kColBarBg);
         SetBkMode(hdc, TRANSPARENT);
 
         int x = bar.left + 6;
         int y = bar.top + 7;
-        const int colW = 58;
-        const int h = 20;
-        const int gap = 4;
 
         auto buttonAt = [&](int bx, int by, int bw, const std::string &id,
                             const char *label, bool active = false) {
@@ -722,10 +767,23 @@ protected:
 
         if (!messagesToggled_)
         {
-            buttonAt(x, y, colW, "EXECUTIVE", "EXEC", vacsShowMenu_ && vacsRole_ == 0);
-            buttonAt(x, y + h, colW, "PLANNER", "PLAN", vacsShowMenu_ && vacsRole_ == 1);
-            x += colW + gap;
+            COLORREF vacsFace = incomingVacsFaceColor();
+            COLORREF vacsText = incomingVacsTextColor();
+            RECT exec = { x, y, x + colW, y + h };
+            RECT plan = { x, y + h, x + colW, y + h + h };
+            if (isIncomingVacsCall())
+            {
+                drawLowResourceButtonEx(hdc, "EXECUTIVE", "EXEC", exec, vacsFace, vacsText);
+                drawLowResourceButtonEx(hdc, "PLANNER", "PLAN", plan, vacsFace, vacsText);
+            }
+            else
+            {
+                buttonAt(x, y, colW, "EXECUTIVE", "EXEC", vacsShowMenu_ && vacsRole_ == 0);
+                buttonAt(x, y + h, colW, "PLANNER", "PLAN", vacsShowMenu_ && vacsRole_ == 1);
+            }
         }
+
+        x += colW + gap;  // Always advance, so nothing shifts when buttons are hidden
 
         if (vacsShowMenu_ && !messagesToggled_)
         {
@@ -734,18 +792,26 @@ protected:
             {
                 RECT r = { x, y, x + 84, y + h };
                 bool active = isCurrentVacsTarget(vacsContacts_[i].station);
-                drawLowResourceButton(hdc, "VACS_" + std::to_string(i),
-                                      vacsContacts_[i].name.c_str(), r, active);
+                bool flash = active && shouldFlashVacsTarget();
+                bool solid = active && vacsCallState_ == VacsCallUiState::Active;
+                drawLowResourceButtonEx(hdc, "VACS_" + std::to_string(i),
+                                      vacsContacts_[i].name.c_str(), r,
+                                      currentVacsTargetFaceColor(flash, solid),
+                                      (flash || solid) ? rgb(255, 255, 255) : kColBtnText);
                 x += 84 + gap;
             }
             RECT incoming = { x, y, x + 66, y + h };
-            drawLowResourceButton(hdc, "INCOMING", "IN", incoming,
-                                  vacsCallState_ == VacsCallUiState::IncomingRinging);
+            drawLowResourceButtonEx(hdc, "INCOMING", "IN", incoming,
+                                    incomingVacsFaceColor(), incomingVacsTextColor());
             x += 66 + gap;
             RECT custom = { x, y, x + 74, y + h };
-            std::string customLabel = isCurrentCustomVacsTarget() ? vacsStatus_.target : "CUSTOM";
-            drawLowResourceButton(hdc, "VACS_CUSTOM", customLabel.c_str(), custom,
-                                  isCurrentCustomVacsTarget());
+            bool customCurrent = isCurrentCustomVacsTarget();
+            bool customFlash = customCurrent && shouldFlashVacsTarget();
+            bool customSolid = customCurrent && vacsCallState_ == VacsCallUiState::Active;
+            std::string customLabel = customCurrent ? vacsStatus_.target : "CUSTOM";
+            drawLowResourceButtonEx(hdc, "VACS_CUSTOM", customLabel.c_str(), custom,
+                                    currentVacsTargetFaceColor(customFlash, customSolid),
+                                    (customFlash || customSolid) ? rgb(255, 255, 255) : kColBtnText);
         }
         else
         {
@@ -787,19 +853,27 @@ protected:
     void drawBottomBar(HDC hdc)
     {
         RECT bar = bottomBarArea();
-        fillSolid(hdc, bar, kColBarBg);
+        int colW = 72;
+        int gap = 4;
+        int reservedX = bar.left + 6;
+        int reservedW = colW + gap;
+
+        // When messages toggled, grey background starts at ARR/DEP (after reserved space)
+        int arrDepX = reservedX + reservedW;
+        RECT bgRect = messagesToggled_
+            ? RECT{ arrDepX, bar.top, bar.right, bar.bottom }
+            : bar;
+        fillSolid(hdc, bgRect, kColBarBg);
 
         HPEN topPen = cachedPen(kColBarFrame);
         HPEN oldPen = static_cast<HPEN>(SelectObject(hdc, topPen));
-        MoveToEx(hdc, bar.left,  bar.top, nullptr);
+        MoveToEx(hdc, arrDepX, bar.top, nullptr);
         LineTo  (hdc, bar.right, bar.top);
         SelectObject(hdc, oldPen);
 
         int y0 = bar.top + kBtnMargin;
         int bh = kBtnH;
         int x = bar.left + 6;
-        int colW = 72;
-        int gap = 4;
 
         auto drawSeparator = [&](int xPos) {
             HPEN sepPen = cachedPen(kColBarFrame);
@@ -939,13 +1013,18 @@ protected:
     int drawVacsGroup(HDC hdc, int x, int y, int colW, int totalH)
     {
         if (messagesToggled_)
-            return 0;
+            return colW;  // Reserve space without drawing, so nothing else shifts
 
         int h2 = totalH / 2;
+        bool incomingCall = isIncomingVacsCall();
         drawBtnEx(hdc, x, y,      colW, h2, "EXECUTIVE", "EXECUTIVE",
-                  vacsShowMenu_ && vacsRole_ == 0, kColBtnFace, kColBtnText);
+                  incomingCall ? false : (vacsShowMenu_ && vacsRole_ == 0),
+                  incomingCall ? incomingVacsFaceColor() : kColBtnFace,
+                  incomingCall ? incomingVacsTextColor() : kColBtnText);
         drawBtnEx(hdc, x, y + h2, colW, h2, "PLANNER", "PLANNER",
-                  vacsShowMenu_ && vacsRole_ == 1, kColBtnFace, kColBtnText);
+                  incomingCall ? false : (vacsShowMenu_ && vacsRole_ == 1),
+                  incomingCall ? incomingVacsFaceColor() : kColBtnFace,
+                  incomingCall ? incomingVacsTextColor() : kColBtnText);
         if (vacsShowMenu_)
         {
             int menuX = x + colW + kBtnGap;
@@ -968,11 +1047,9 @@ protected:
             int by = menuY + (i % 2) * (btnH + kBtnGap);
             std::string id = "VACS_" + std::to_string(i);
             bool currentTarget = isCurrentVacsTarget(vacsContacts_[i].station);
-            bool flash = currentTarget &&
-                         vacsCallState_ == VacsCallUiState::OutgoingRinging &&
-                         (((GetTickCount() / 450) % 2) == 0);
+            bool flash = currentTarget && shouldFlashVacsTarget();
             bool solid = currentTarget && vacsCallState_ == VacsCallUiState::Active;
-            COLORREF face = (flash || solid) ? rgb(0, 96, 210) : kColBtnFace;
+            COLORREF face = currentVacsTargetFaceColor(flash, solid);
             COLORREF text = (flash || solid) ? rgb(255, 255, 255) : kColBtnText;
             drawBtnEx(hdc, bx, by, btnW, btnH, id.c_str(), vacsContacts_[i].name.c_str(),
                       false, face, text);
@@ -983,23 +1060,15 @@ protected:
     void drawVacsPanelControls(HDC hdc, int x, int y, int colW, int totalH)
     {
         int h2 = totalH / 2;
-        bool ringing = vacsCallState_ == VacsCallUiState::IncomingRinging;
-        bool active = vacsCallState_ == VacsCallUiState::Active && vacsStatus_.target.empty();
-        bool flash = ringing && (((GetTickCount() / 450) % 2) == 0);
-        COLORREF incomingFace = active ? rgb(0, 160, 0) :
-                                flash  ? rgb(0, 180, 0) : kColBtnFace;
-        COLORREF incomingText = (active || flash) ? rgb(255, 255, 255) : kColBtnText;
         bool customCurrent = isCurrentCustomVacsTarget();
-        bool customFlash = customCurrent &&
-                           vacsCallState_ == VacsCallUiState::OutgoingRinging &&
-                           (((GetTickCount() / 450) % 2) == 0);
+        bool customFlash = customCurrent && shouldFlashVacsTarget();
         bool customSolid = customCurrent && vacsCallState_ == VacsCallUiState::Active;
-        COLORREF customFace = (customFlash || customSolid) ? rgb(0, 96, 210) : kColBtnFace;
+        COLORREF customFace = currentVacsTargetFaceColor(customFlash, customSolid);
         COLORREF customText = (customFlash || customSolid) ? rgb(255, 255, 255) : kColBtnText;
         std::string customLabel = customCurrent ? vacsStatus_.target : "CUSTOM";
 
         drawBtnEx(hdc, x, y, colW, h2, "INCOMING", "INCOMING",
-                  false, incomingFace, incomingText);
+                  false, incomingVacsFaceColor(), incomingVacsTextColor());
         drawBtnEx(hdc, x, y + h2, colW, h2, "VACS_CUSTOM", customLabel.c_str(),
                   false, customFace, customText);
 
@@ -1295,7 +1364,7 @@ protected:
         else if (s == "USERS")           openConnectionDialog(pt, area);
         else if (s == "VIEW1")           applyView("VIEW1");
         else if (s == "VIEW2")           applyView("VIEW2");
-        else if (s == "CEN")             centerScreen();
+        else if (s == "CEN")             applyView("1");
         else if (s == "EXP +")           zoomIn();
         else if (s == "EXP -")           zoomOut();
         else if (s == "+")               zoomIn();
@@ -1316,8 +1385,8 @@ protected:
 
     void toggleLatchedButton(bool &state, const char *label)
     {
+        (void)label;
         state = !state;
-        message(std::string(label) + (state ? " ON" : " OFF"));
     }
 
     void applyView(const std::string &button)
@@ -1346,10 +1415,8 @@ protected:
             {
                 setRange(v.zoomNm);
             }
-            message("View loaded: " + v.name);
             return;
         }
-        message("No view saved for button " + button);
     }
 
     void saveCurrentView(const std::string &button)
@@ -1367,7 +1434,6 @@ protected:
         rangeNm_ = currentZoom_ = v.zoomNm;
         saveViewToJson(button, v);
         views_ = loadViewsJson();
-        message("Current view saved to " + button);
     }
 
     void processHeldViewButtons()
@@ -1484,19 +1550,16 @@ protected:
             std::string cmd = ".filter arrivals";
             if (!controllerAirport_.empty()) cmd += " " + controllerAirport_;
             GetPlugIn()->OnCompileCommand(cmd.c_str());
-            message("Showing arrivals to " + controllerAirport_);
         }
         else if (filter_ == "DEPARTURES")
         {
             std::string cmd = ".filter departures";
             if (!controllerAirport_.empty()) cmd += " " + controllerAirport_;
             GetPlugIn()->OnCompileCommand(cmd.c_str());
-            message("Showing departures from " + controllerAirport_);
         }
         else
         {
             GetPlugIn()->OnCompileCommand(".filter clear");
-            message("Filter cleared");
         }
         RequestRefresh();
     }
@@ -1505,7 +1568,6 @@ protected:
     {
         mtcdEnabled_ = !mtcdEnabled_;
         GetPlugIn()->OnCompileCommand(mtcdEnabled_ ? ".mtcd on" : ".mtcd off");
-        message(mtcdEnabled_ ? "MTCD ON" : "MTCD OFF");
     }
 
     void toggleQDMMode()
@@ -1514,7 +1576,6 @@ protected:
         qdmFirstClick_ = false;
         qdmLineValid_ = false;
         sendEuroScopeShortcut(VK_MENU, 'Q');
-        message("EuroScope QDM armed");
         RequestRefresh();
     }
 
@@ -1540,7 +1601,6 @@ protected:
         {
             qdmPoint1_ = ConvertCoordFromPixelToPosition(clickPt);
             qdmFirstClick_ = true;
-            message("First QDM point set \x96 click second point");
         }
         else
         {
@@ -1548,24 +1608,7 @@ protected:
             qdmFirstClick_ = false;
             qdmMode_ = false;
             qdmLineValid_ = true;
-            double bearing = qdmPoint1_.DirectionTo(qdmPoint2_);
-            char buf[64];
-            snprintf(buf, sizeof(buf), "QDM: %.1f\xB0", bearing);
-            message(buf);
             RequestRefresh();
-        }
-    }
-
-    void showTagFamilyPicker(RECT area)
-    {
-        GetPlugIn()->OpenPopupList(area, "Tag Family", 1);
-        for (int i = 0; i < 8; ++i)
-        {
-            char label[32];
-            snprintf(label, sizeof(label), "Tag Family %d", i);
-            GetPlugIn()->AddPopupListElement(label, "", FN_DATBLK, false,
-                (i == currentTagFamily_) ? EuroScopePlugIn::POPUP_ELEMENT_CHECKED
-                                         : EuroScopePlugIn::POPUP_ELEMENT_UNCHECKED);
         }
     }
 
@@ -1575,12 +1618,6 @@ protected:
         char cmd[32];
         snprintf(cmd, sizeof(cmd), ".tagfamily %d", family);
         GetPlugIn()->OnCompileCommand(cmd);
-        message("Tag family set to " + std::to_string(family));
-    }
-
-    void openDisplaySettings()
-    {
-        showDisplaySettingsPicker(bottomBarArea());
     }
 
     void openEuroScopeDisplaySettings()
@@ -1589,40 +1626,12 @@ protected:
             return;
         if (invokeEuroScopeMenu({"other settings", "display"}))
             return;
-        message("DATBLK: Open Display Settings, then choose Tag family.");
     }
 
     void openConnectionDialog(POINT pt, RECT area)
     {
-        if (pt.x < area.left || pt.x > area.right || pt.y < area.top || pt.y > area.bottom)
-            return;
-        DWORD now = GetTickCount();
-        if (now - lastUsersClickTick_ < 1500)
-            return;
-        lastUsersClickTick_ = now;
-        message("USERS connection dialog disabled: EuroScope keeps .connectdialog armed after plugin command injection.");
-    }
-
-    void processPendingConnectionDialog()
-    {
-        if (!pendingConnectionDialog_)
-            return;
-        DWORD now = GetTickCount();
-        if (static_cast<DWORD>(now - pendingConnectionDialogTick_) >= 0x80000000UL)
-            return;
-        pendingConnectionDialog_ = false;
-        pendingCommandClear_ = false;
-    }
-
-    void processPendingCommandClear()
-    {
-        if (!pendingCommandClear_)
-            return;
-        DWORD now = GetTickCount();
-        if (static_cast<DWORD>(now - pendingCommandClearTick_) >= 0x80000000UL)
-            return;
-        pendingCommandClear_ = false;
-        sendEuroScopeCommand(".");
+        (void)pt;
+        (void)area;
     }
 
     bool invokeEuroScopeMenu(const std::vector<std::string> &needles)
@@ -1843,10 +1852,8 @@ protected:
 
         EuroScopePlugIn::CFlightPlan fp = GetPlugIn()->FlightPlanSelect(callsign);
         if (!fp.IsValid())
-        {
-            message(std::string("TopSky call failed: no FP for ") + callsign);
             return false;
-        }
+
         GetPlugIn()->SetASELAircraft(fp);
 
         RECT radar = GetRadarArea();
@@ -1875,7 +1882,7 @@ protected:
     void openSelectedFlightPlan(POINT pt, RECT area)
     {
         EuroScopePlugIn::CFlightPlan fp = aselFp();
-        if (!fp.IsValid()) { message("FPL: No ASEL aircraft selected."); return; }
+        if (!fp.IsValid()) return;
         const char *cs = fp.GetCallsign();
 
         RECT radar = GetRadarArea();
@@ -1899,31 +1906,29 @@ protected:
     void toggleTopSkyRte(POINT pt, RECT area)
     {
         EuroScopePlugIn::CFlightPlan fp = aselFp();
-        if (!fp.IsValid()) { message("RTE: No ASEL aircraft selected."); return; }
-        message(std::string("RTE: toggling for ") + fp.GetCallsign());
+        if (!fp.IsValid()) return;
         invokeTopSkyFn(fp.GetCallsign(), TopSky::TOGGLE_ROUTE_DRAW_MTCD_SAP, pt, area);
     }
 
     void openCpdlcWindows(POINT pt, RECT area)
     {
         EuroScopePlugIn::CFlightPlan fp = aselFp();
-        if (!fp.IsValid()) { message("CPDLC: No ASEL aircraft selected."); return; }
+        if (!fp.IsValid()) return;
         const char *cs = fp.GetCallsign();
-        message(std::string("CPDLC: opening for ") + cs);
         invokeTopSkyFn(cs, TopSky::OPEN_CPDLC_CURRENT_MESSAGE_WINDOW_CPDLC_W, pt, area);
     }
 
     void openSepTool(POINT pt, RECT area)
     {
         EuroScopePlugIn::CFlightPlan fp = aselFp();
-        if (!fp.IsValid()) { message("No selected aircraft for SEP."); return; }
+        if (!fp.IsValid()) return;
         invokeTopSkyFn(fp.GetCallsign(), TopSky::INVOKE_SEP_TOOL_WITH_VSEP, pt, area);
     }
 
     void openTopSkyOpText2(POINT pt, RECT area)
     {
         EuroScopePlugIn::CFlightPlan fp = aselFp();
-        if (!fp.IsValid()) { message("FREETEXT: No ASEL aircraft selected."); return; }
+        if (!fp.IsValid()) return;
         const char *cs = fp.GetCallsign();
         GetPlugIn()->SetASELAircraft(fp);
         StartTagFunction(
@@ -1953,16 +1958,10 @@ protected:
                 if (p.IsValid())
                 {
                     setSearchHighlight(p.GetPosition());
-                    message("Found: " + std::string(callsign));
                     RequestRefresh();
                     return;
                 }
             }
-            message("No radar position for " + std::string(callsign));
-        }
-        else
-        {
-            message("No flight plan: " + std::string(callsign));
         }
         searchCircleValid_ = false;
         searchLineValid_ = false;
@@ -1983,7 +1982,6 @@ protected:
                     if (p.IsValid())
                     {
                         setSearchHighlight(p.GetPosition());
-                        message("Squawk " + std::string(squawk) + " on " + std::string(fp.GetCallsign()));
                         RequestRefresh();
                         return;
                     }
@@ -1991,7 +1989,6 @@ protected:
             }
             fp = GetPlugIn()->FlightPlanSelectNext(fp);
         }
-        message("No aircraft with squawk " + std::string(squawk));
         searchCircleValid_ = false;
         searchLineValid_ = false;
     }

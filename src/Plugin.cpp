@@ -10,7 +10,7 @@ class IndraApcPlugin : public EuroScopePlugIn::CPlugIn
 public:
     IndraApcPlugin()
         : CPlugIn(EuroScopePlugIn::COMPATIBILITY_CODE,
-                  kPluginName, "0.1.4",
+                  kPluginName, "1.0.1",
                   "Maghreb vACC",
                   "GPL v3")
     {
@@ -26,7 +26,6 @@ public:
         RegisterTagItemFunction("DATBLK",          FN_DATBLK);
         RegisterTagItemFunction("Display Toggle",  FN_DISPLAY_TOGGLE);
         RegisterTagItemFunction("QDM Mode",        FN_QDM_MODE);
-        RegisterTagItemFunction("METEO",           FN_METEO);
         RegisterTagItemFunction("MTCD Toggle",     FN_MTCD_TOGGLE);
         RegisterTagItemFunction("Alarm Toggle",    FN_ALARM_TOGGLE);
         RegisterTagItemFunction("Sectors",         FN_SECTORS);
@@ -52,8 +51,6 @@ public:
         RegisterTagItemFunction("Load View 3",     FN_LOAD_VIEW_3);
         RegisterTagItemFunction("Load View 5",     FN_LOAD_VIEW_5);
         RegisterTagItemFunction("Load View 8",     FN_LOAD_VIEW_8);
-        RegisterTagItemFunction("Messages Send",   FN_MESSAGES_SEND);
-        RegisterTagItemFunction("Messages New DM", FN_MESSAGES_NEW_DM);
         RegisterTagItemFunction("VACS Custom Call", FN_VACS_CUSTOM);
     }
 
@@ -73,26 +70,6 @@ public:
     {
         if (!startsWith(cmd, ".indra")) return false;
         return true;
-    }
-
-    void OnNewMetarReceived(const char *station, const char *fullMetar) override
-    {
-        if (station && *station && fullMetar)
-            g_metars[station] = fullMetar;
-    }
-
-    void OnCompileFrequencyChat(const char *senderCallsign,
-                                double frequency,
-                                const char *chatMessage) override
-    {
-        (void)senderCallsign; (void)frequency; (void)chatMessage;
-    }
-
-    void OnCompilePrivateChat(const char *senderCallsign,
-                              const char *receiverCallsign,
-                              const char *chatMessage) override
-    {
-        (void)senderCallsign; (void)receiverCallsign; (void)chatMessage;
     }
 
     void OnFunctionCall(int functionId, const char *itemString,

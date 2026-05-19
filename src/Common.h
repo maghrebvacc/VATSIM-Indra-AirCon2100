@@ -70,7 +70,6 @@ enum FunctionId
     FN_DATBLK,
     FN_DISPLAY_TOGGLE,
     FN_QDM_MODE,
-    FN_METEO,
     FN_MTCD_TOGGLE,
     FN_ALARM_TOGGLE,
     FN_SECTORS,
@@ -96,9 +95,6 @@ enum FunctionId
     FN_LOAD_VIEW_3,
     FN_LOAD_VIEW_5,
     FN_LOAD_VIEW_8,
-    FN_MESSAGES_CENTER,
-    FN_MESSAGES_SEND,
-    FN_MESSAGES_NEW_DM,
     FN_ZOOM_NM_EDIT,
     FN_SEP_TOOL,
     FN_VACS_CUSTOM
@@ -113,7 +109,5 @@ struct ViewDef
     int         zoomNm    = 120;
     bool        hasCenter = false;
 };
-
-extern std::map<std::string, std::string> g_metars;
 
 } // namespace Indra
