@@ -1,6 +1,6 @@
 # INDRA Plugin VATSIM
 
-## Beta Version
+## Release Version
 
 ---
 
