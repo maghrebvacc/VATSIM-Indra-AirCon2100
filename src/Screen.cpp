@@ -64,20 +64,10 @@ public:
           vacsDeferredPoll_(false),
           vacsDeferredPollTick_(0),
           vacsLastFlashRefreshTick_(0),
+          remoteDataLastLoadTick_(0),
           zoomLastCalcTick_(0)
     {
-        vacsContacts_ = loadContactsJson();
-
-        EuroScopePlugIn::CController me = GetPlugIn()->ControllerMyself();
-        if (me.IsValid())
-        {
-            std::string cs = me.GetCallsign();
-            std::size_t u  = cs.find('_');
-            controllerAirport_ = (u != std::string::npos) ? cs.substr(0, u) : cs;
-            setActiveDataPosition(cs);
-        }
-        views_ = loadViewsJson();
-        vacsContacts_ = loadContactsJson();
+        refreshRemoteData(true);
     }
 
     void OnAsrContentLoaded(bool loaded) override
@@ -134,6 +124,8 @@ public:
 
     void OnRefresh(HDC hdc, int phase) override
     {
+        refreshRemoteData(false);
+
         if (!overlayEnabled_ ||
             phase != EuroScopePlugIn::REFRESH_PHASE_AFTER_LISTS) return;
 
@@ -480,7 +472,9 @@ protected:
     bool                 vacsDeferredPoll_ = false;
     DWORD                vacsDeferredPollTick_ = 0;
     DWORD                vacsLastFlashRefreshTick_ = 0;
+    DWORD                remoteDataLastLoadTick_ = 0;
     DWORD                zoomLastCalcTick_ = 0;
+    std::string          dataPosition_;
     std::vector<std::string> screenObjectStrings_;
 
     void addScreenObjectStable(int objectType, const std::string &objectId,
@@ -1392,10 +1386,12 @@ protected:
     void applyView(const std::string &button)
     {
         updateDataPosition();
-        views_ = loadViewsJson();
+        refreshRemoteData(true);
+        OutputDebugStringA(("Indra APC applyView " + button + " with " + std::to_string(views_.size()) + " loaded views\n").c_str());
         for (const auto &v : views_)
         {
             if (v.button != button) continue;
+            OutputDebugStringA(("Indra APC applying view " + v.button + " zoom " + std::to_string(v.zoomNm) + "\n").c_str());
             if (v.hasCenter)
             {
                 EuroScopePlugIn::CPosition pos;
@@ -1417,6 +1413,7 @@ protected:
             }
             return;
         }
+        OutputDebugStringA(("Indra APC view button not found: " + button + "\n").c_str());
     }
 
     void saveCurrentView(const std::string &button)
@@ -1783,25 +1780,48 @@ protected:
         controllerAirport_ = (u != std::string::npos) ? cs.substr(0, u) : cs;
     }
 
-    void updateDataPosition()
+    bool updateDataPosition()
     {
+        std::string previous = dataPosition_;
         EuroScopePlugIn::CController me = GetPlugIn()->ControllerMyself();
         if (!me.IsValid())
         {
             controllerAirport_.clear();
+            dataPosition_.clear();
             setActiveDataPosition("");
-            return;
+            return !previous.empty();
         }
         std::string cs = me.GetCallsign();
         if (cs.empty())
         {
             controllerAirport_.clear();
+            dataPosition_.clear();
             setActiveDataPosition("");
-            return;
+            return !previous.empty();
         }
         std::size_t u = cs.find('_');
         controllerAirport_ = (u != std::string::npos) ? cs.substr(0, u) : cs;
+        dataPosition_ = cs;
         setActiveDataPosition(cs);
+        return normalizedCallsign(previous) != normalizedCallsign(dataPosition_);
+    }
+
+    void refreshRemoteData(bool force)
+    {
+        bool positionChanged = updateDataPosition();
+        if (dataPosition_.empty())
+            return;
+
+        DWORD now = GetTickCount();
+        if (!force &&
+            !positionChanged &&
+            remoteDataLastLoadTick_ != 0 &&
+            now - remoteDataLastLoadTick_ < 60000)
+            return;
+
+        remoteDataLastLoadTick_ = now;
+        views_ = loadViewsJson();
+        vacsContacts_ = loadContactsJson();
     }
 
     void applySectorType(int elementType, bool visible)
@@ -2006,7 +2026,7 @@ protected:
     }
 
     EuroScopePlugIn::CFlightPlan   aselFp() { return GetPlugIn()->FlightPlanSelectASEL();  }
-    EuroScopePlugIn::CRadarTarget  aselRt() { return GetPlugIn()->RadarTargetSelectASEL(); }
+EuroScopePlugIn::CRadarTarget  aselRt() { return GetPlugIn()->RadarTargetSelectASEL(); }
 };
 
 EuroScopePlugIn::CRadarScreen *CreateIndraApcScreen()

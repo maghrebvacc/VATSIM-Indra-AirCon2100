@@ -1,0 +1,118 @@
+{
+    "DAAG_GND": {
+      "contacts":[
+    {
+      "name": "TWR",
+      "station": "DAAG_GND"
+    },
+    {
+      "name": "APP",
+      "station": "DAAG_APP"
+    },
+    {
+      "name": "ACC BBX",
+      "station": "DAAA_CTR"
+    },
+    {
+      "name": "ACC NC",
+      "station": "DAAA_NC_CTR"
+    },
+    {
+      "name": "ACC NE",
+      "station": "DAAA_NE_CTR"
+    },
+    {
+      "name": "ACC NW",
+      "station": "DAAA_NW_CTR"
+    }
+  ]
+    },
+  "DAAG_TWR": {
+          "contacts":[
+    {
+      "name": "GND",
+      "station": "DAAG_GND"
+    },
+    {
+      "name": "APP",
+      "station": "DAAG_APP"
+    },
+    {
+      "name": "ACC BBX",
+      "station": "DAAA_CTR"
+    },
+    {
+      "name": "ACC NC",
+      "station": "DAAA_NC_CTR"
+    },
+    {
+      "name": "ACC NE",
+      "station": "DAAA_NE_CTR"
+    },
+    {
+      "name": "ACC NW",
+      "station": "DAAA_NW_CTR"
+    }
+  ]
+  },
+    "DAAG_APP": {
+            "contacts":[
+    {
+      "name": "GND",
+      "station": "DAAG_GND"
+    },
+    {
+      "name": "TWR",
+      "station": "DAAG_APP"
+    },
+    {
+      "name": "ACC BBX",
+      "station": "DAAA_CTR"
+    },
+    {
+      "name": "ACC NC",
+      "station": "DAAA_NC_CTR"
+    },
+    {
+      "name": "ACC NE",
+      "station": "DAAA_NE_CTR"
+    },
+    {
+      "name": "ACC NW",
+      "station": "DAAA_NW_CTR"
+    }
+  ]
+  },
+      "DAAA_CTR": {
+              "contacts":[
+    {
+      "name": "GND",
+      "station": "DAAG_GND"
+    },
+    {
+      "name": "TWR",
+      "station": "DAAG_APP"
+    },
+    {
+      "name": "APP",
+      "station": "DAAG_APP"
+    },
+    {
+      "name": "ACC NC",
+      "station": "DAAA_NC_CTR"
+    },
+    {
+      "name": "ACC NE",
+      "station": "DAAA_NE_CTR"
+    },
+    {
+      "name": "ACC NW",
+      "station": "DAAA_NW_CTR"
+    },
+        {
+      "name": "DTTC N / BBX",
+      "station": "DTTC_N_CTR"
+    }
+              ]
+  }
+}

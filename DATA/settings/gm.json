@@ -1,0 +1,570 @@
+{
+  "GMMN_TWR": {
+    "contacts": [
+      {
+        "name": "DEL",
+        "station": "GMMN_DEL"
+      },
+      {
+        "name": "GND",
+        "station": "GMMN_GND"
+      },
+      {
+        "name": "APP",
+        "station": "GMMN_APP"
+      },
+      {
+        "name": "ACC N",
+        "station": "GMMM_N_CTR"
+      },
+      {
+        "name": "ACC E",
+        "station": "GMMM_E_CTR"
+      },
+      {
+        "name": "ACC S",
+        "station": "GMMM_S_CTR"
+      },
+      {
+        "name": "AGA O",
+        "station": "GMAC_O_CTR"
+      },
+      {
+        "name": "AGA ON",
+        "station": "GMAC_ON_CTR"
+      },
+      {
+        "name": "AGA BBX",
+        "station": "GMAC_CTR"
+      }
+    ]
+  },
+  "GMMN_APP": {
+    "contacts": [
+      {
+        "name": "DEL",
+        "station": "GMMN_DEL"
+      },
+      {
+        "name": "GND",
+        "station": "GMMN_GND"
+      },
+      {
+        "name": "TWR",
+        "station": "GMMN_TWR"
+      },
+      {
+        "name": "ACC N",
+        "station": "GMMM_N_CTR"
+      },
+      {
+        "name": "ACC E",
+        "station": "GMMM_E_CTR"
+      },
+      {
+        "name": "ACC S",
+        "station": "GMMM_S_CTR"
+      },
+      {
+        "name": "AGA O",
+        "station": "GMAC_O_CTR"
+      },
+      {
+        "name": "AGA ON",
+        "station": "GMAC_ON_CTR"
+      },
+      {
+        "name": "AGA BBX",
+        "station": "GMAC_CTR"
+      }
+    ]
+  },
+  "GMMM_N_CTR": {
+    "contacts": [
+      {
+        "name": "DEL",
+        "station": "GMMN_DEL"
+      },
+      {
+        "name": "GND",
+        "station": "GMMN_GND"
+      },
+      {
+        "name": "TWR",
+        "station": "GMMN_TWR"
+      },
+      {
+        "name": "APP",
+        "station": "GMMN_APP"
+      },
+      {
+        "name": "ACC E",
+        "station": "GMMM_E_CTR"
+      },
+      {
+        "name": "ACC S",
+        "station": "GMMM_S_CTR"
+      },
+      {
+        "name": "AGA O",
+        "station": "GMAC_O_CTR"
+      },
+      {
+        "name": "AGA ON",
+        "station": "GMAC_ON_CTR"
+      },
+      {
+        "name": "AGA BBX",
+        "station": "GMAC_CTR"
+      },
+      {
+        "name": "ACC LECS",
+        "station": "LECS_CTR"
+      }
+    ]
+  },
+  "GMMM_S_CTR": {
+    "contacts": [
+      {
+        "name": "DEL",
+        "station": "GMMN_DEL"
+      },
+      {
+        "name": "GND",
+        "station": "GMMN_GND"
+      },
+      {
+        "name": "TWR",
+        "station": "GMMN_TWR"
+      },
+      {
+        "name": "APP",
+        "station": "GMMN_APP"
+      },
+      {
+        "name": "ACC N",
+        "station": "GMMM_N_CTR"
+      },
+      {
+        "name": "ACC E",
+        "station": "GMMM_E_CTR"
+      },
+      {
+        "name": "AGA O",
+        "station": "GMAC_O_CTR"
+      },
+      {
+        "name": "AGA ON",
+        "station": "GMAC_ON_CTR"
+      },
+      {
+        "name": "AGA BBX",
+        "station": "GMAC_CTR"
+      }
+    ]
+  },
+  "GMMM_E_CTR": {
+    "contacts": [
+      {
+        "name": "DEL",
+        "station": "GMMN_DEL"
+      },
+      {
+        "name": "GND",
+        "station": "GMMN_GND"
+      },
+      {
+        "name": "TWR",
+        "station": "GMMN_TWR"
+      },
+      {
+        "name": "APP",
+        "station": "GMMN_APP"
+      },
+      {
+        "name": "ACC N",
+        "station": "GMMM_N_CTR"
+      },
+      {
+        "name": "ACC S",
+        "station": "GMMM_S_CTR"
+      },
+      {
+        "name": "AGA O",
+        "station": "GMAC_O_CTR"
+      },
+      {
+        "name": "AGA ON",
+        "station": "GMAC_ON_CTR"
+      },
+      {
+        "name": "AGA BBX",
+        "station": "GMAC_CTR"
+      },
+      {
+        "name": "ACC LECS",
+        "station": "LECS_CTR"
+      }
+    ]
+  },
+  "GMMM_NE_CTR": {
+    "contacts": [
+      {
+        "name": "DEL",
+        "station": "GMMN_DEL"
+      },
+      {
+        "name": "GND",
+        "station": "GMMN_GND"
+      },
+      {
+        "name": "TWR",
+        "station": "GMMN_TWR"
+      },
+      {
+        "name": "APP",
+        "station": "GMMN_APP"
+      },
+      {
+        "name": "ACC S",
+        "station": "GMMM_S_CTR"
+      },
+      {
+        "name": "AGA O",
+        "station": "GMAC_O_CTR"
+      },
+      {
+        "name": "AGA ON",
+        "station": "GMAC_ON_CTR"
+      },
+      {
+        "name": "AGA BBX",
+        "station": "GMAC_CTR"
+      },
+      {
+        "name": "ACC LECS",
+        "station": "LECS_CTR"
+      }
+    ]
+  },
+  "GMAC_CTR": {
+    "contacts": [
+      {
+        "name": "APP",
+        "station": "GMMN_APP"
+      },
+      {
+        "name": "ACC S",
+        "station": "GMMM_S_CTR"
+      },
+      {
+        "name": "AGA O",
+        "station": "GMAC_O_CTR"
+      },
+      {
+        "name": "AGA ON",
+        "station": "GMAC_ON_CTR"
+      },
+      {
+        "name": "ACC LECS",
+        "station": "LECS_CTR"
+      },
+      {
+        "name": "ACC LPPC",
+        "station": "LPPC_CTR"
+      },
+      {
+        "name": "CNR R6",
+        "station": "GCCC_R6_CTR"
+      },
+      {
+        "name": "CNR R2",
+        "station": "GCCC_R2_CTR"
+      }
+    ]
+  },
+  "GMAC_O_CTR": {
+    "contacts": [
+      {
+        "name": "APP",
+        "station": "GMMN_APP"
+      },
+      {
+        "name": "ACC S",
+        "station": "GMMM_S_CTR"
+      },
+      {
+        "name": "AGA O",
+        "station": "GMAC_O_CTR"
+      },
+      {
+        "name": "AGA ON",
+        "station": "GMAC_ON_CTR"
+      },
+      {
+        "name": "ACC LPPC",
+        "station": "LPPC_CTR"
+      },
+      {
+        "name": "CNR R6",
+        "station": "GCCC_R6_CTR"
+      },
+      {
+        "name": "CNR R2",
+        "station": "GCCC_R2_CTR"
+      }
+    ]
+  },
+  "GMAC_W_CTR": {
+    "contacts": [
+      {
+        "name": "APP",
+        "station": "GMMN_APP"
+      },
+      {
+        "name": "ACC S",
+        "station": "GMMM_S_CTR"
+      },
+      {
+        "name": "AGA O",
+        "station": "GMAC_O_CTR"
+      },
+      {
+        "name": "AGA ON",
+        "station": "GMAC_ON_CTR"
+      },
+      {
+        "name": "ACC LECS",
+        "station": "LECS_CTR"
+      },
+      {
+        "name": "ACC LPPC",
+        "station": "LPPC_CTR"
+      },
+      {
+        "name": "CNR R6",
+        "station": "GCCC_R6_CTR"
+      },
+      {
+        "name": "CNR R2",
+        "station": "GCCC_R2_CTR"
+      }
+    ]
+  },
+  "GMAC_WN_CTR": {
+    "contacts": [
+      {
+        "name": "APP",
+        "station": "GMMN_APP"
+      },
+      {
+        "name": "ACC S",
+        "station": "GMMM_S_CTR"
+      },
+      {
+        "name": "AGA O",
+        "station": "GMAC_O_CTR"
+      },
+      {
+        "name": "AGA ON",
+        "station": "GMAC_ON_CTR"
+      },
+      {
+        "name": "ACC LECS",
+        "station": "LECS_CTR"
+      },
+      {
+        "name": "ACC LPPC",
+        "station": "LPPC_CTR"
+      },
+      {
+        "name": "CNR R6",
+        "station": "GCCC_R6_CTR"
+      },
+      {
+        "name": "CNR R2",
+        "station": "GCCC_R2_CTR"
+      }
+    ]
+  },
+  "GMAC_WS_CTR": {
+    "contacts": [
+      {
+        "name": "APP",
+        "station": "GMMN_APP"
+      },
+      {
+        "name": "ACC S",
+        "station": "GMMM_S_CTR"
+      },
+      {
+        "name": "AGA O",
+        "station": "GMAC_O_CTR"
+      },
+      {
+        "name": "AGA ON",
+        "station": "GMAC_ON_CTR"
+      },
+      {
+        "name": "ACC LECS",
+        "station": "LECS_CTR"
+      },
+      {
+        "name": "ACC LPPC",
+        "station": "LPPC_CTR"
+      },
+      {
+        "name": "CNR R6",
+        "station": "GCCC_R6_CTR"
+      },
+      {
+        "name": "CNR R2",
+        "station": "GCCC_R2_CTR"
+      }
+    ]
+  },
+  "GMAC_ON_CTR": {
+    "contacts": [
+      {
+        "name": "APP",
+        "station": "GMMN_APP"
+      },
+      {
+        "name": "ACC S",
+        "station": "GMMM_S_CTR"
+      },
+      {
+        "name": "AGA O",
+        "station": "GMAC_O_CTR"
+      },
+      {
+        "name": "AGA ON",
+        "station": "GMAC_ON_CTR"
+      },
+      {
+        "name": "ACC LPPC",
+        "station": "LPPC_CTR"
+      },
+      {
+        "name": "CNR R6",
+        "station": "GCCC_R6_CTR"
+      },
+      {
+        "name": "CNR R2",
+        "station": "GCCC_R2_CTR"
+      }
+    ]
+  },
+  "GMAC_OS_CTR": {
+    "contacts": [
+      {
+        "name": "APP",
+        "station": "GMMN_APP"
+      },
+      {
+        "name": "ACC S",
+        "station": "GMMM_S_CTR"
+      },
+      {
+        "name": "AGA O",
+        "station": "GMAC_O_CTR"
+      },
+      {
+        "name": "AGA ON",
+        "station": "GMAC_ON_CTR"
+      },
+      {
+        "name": "ACC LPPC",
+        "station": "LPPC_CTR"
+      },
+      {
+        "name": "CNR R6",
+        "station": "GCCC_R6_CTR"
+      },
+      {
+        "name": "CNR R2",
+        "station": "GCCC_R2_CTR"
+      }
+    ]
+  },
+  "GMMX_TWR": {
+    "contacts": [
+      {
+        "name": "DEL",
+        "station": "GMMX_DEL"
+      },
+      {
+        "name": "GND",
+        "station": "GMMX_GND"
+      },
+      {
+        "name": "APP",
+        "station": "GMMX_APP"
+      },
+      {
+        "name": "ACC N",
+        "station": "GMMM_N_CTR"
+      },
+      {
+        "name": "ACC E",
+        "station": "GMMM_E_CTR"
+      },
+      {
+        "name": "ACC S",
+        "station": "GMMM_S_CTR"
+      },
+      {
+        "name": "AGA O",
+        "station": "GMAC_O_CTR"
+      },
+      {
+        "name": "AGA ON",
+        "station": "GMAC_ON_CTR"
+      },
+      {
+        "name": "AGA BBX",
+        "station": "GMAC_CTR"
+      }
+    ]
+  },
+  "GMMX_APP": {
+    "contacts": [
+      {
+        "name": "DEL",
+        "station": "GMMX_DEL"
+      },
+      {
+        "name": "GND",
+        "station": "GMMX_GND"
+      },
+      {
+        "name": "TWR",
+        "station": "GMMX_TWR"
+      },
+      {
+        "name": "ACC N",
+        "station": "GMMM_N_CTR"
+      },
+      {
+        "name": "ACC E",
+        "station": "GMMM_E_CTR"
+      },
+      {
+        "name": "ACC S",
+        "station": "GMMM_S_CTR"
+      },
+      {
+        "name": "AGA O",
+        "station": "GMAC_O_CTR"
+      },
+      {
+        "name": "AGA ON",
+        "station": "GMAC_ON_CTR"
+      },
+      {
+        "name": "AGA BBX",
+        "station": "GMAC_CTR"
+      }
+    ]
+  }
+}

@@ -2,6 +2,8 @@
 #include <ws2tcpip.h>
 #pragma comment(lib, "ws2_32.lib")
 #include "Storage.h"
+#include <winhttp.h>
+#pragma comment(lib, "winhttp.lib")
 
 namespace Indra
 {
@@ -11,6 +13,8 @@ namespace
 constexpr const char *kVacsHost = "127.0.0.1";
 constexpr int         kVacsPort = 9600;
 constexpr const char *kVacsPath = "/ws";
+constexpr const wchar_t *kPluginApiHost = L"api-for-plugin.vercel.app";
+constexpr INTERNET_PORT  kPluginApiPort = INTERNET_DEFAULT_HTTPS_PORT;
 
 class WinsockSession
 {
@@ -171,6 +175,197 @@ std::string normalizeCallsign(std::string value)
 
 std::string g_activeDataPosition;
 
+class WinHttpHandle
+{
+public:
+    explicit WinHttpHandle(HINTERNET handle = nullptr) : handle_(handle) {}
+    ~WinHttpHandle()
+    {
+        if (handle_) WinHttpCloseHandle(handle_);
+    }
+
+    HINTERNET get() const { return handle_; }
+    explicit operator bool() const { return handle_ != nullptr; }
+
+private:
+    HINTERNET handle_;
+};
+
+std::wstring widenAscii(const std::string &value)
+{
+    return std::wstring(value.begin(), value.end());
+}
+
+std::string urlEncodePathSegment(const std::string &value)
+{
+    static const char *hex = "0123456789ABCDEF";
+    std::string out;
+    for (unsigned char c : value)
+    {
+        if ((c >= 'A' && c <= 'Z') ||
+            (c >= 'a' && c <= 'z') ||
+            (c >= '0' && c <= '9') ||
+            c == '-' || c == '_' || c == '.' || c == '~')
+        {
+            out.push_back(static_cast<char>(c));
+        }
+        else
+        {
+            out.push_back('%');
+            out.push_back(hex[c >> 4]);
+            out.push_back(hex[c & 0x0F]);
+        }
+    }
+    return out;
+}
+
+std::string stripUtf8Bom(std::string text)
+{
+    if (text.size() >= 3 &&
+        static_cast<unsigned char>(text[0]) == 0xEF &&
+        static_cast<unsigned char>(text[1]) == 0xBB &&
+        static_cast<unsigned char>(text[2]) == 0xBF)
+    {
+        text.erase(0, 3);
+    }
+    return text;
+}
+
+std::string debugPreview(const std::string &text)
+{
+    std::string preview = text.substr(0, 180);
+    for (char &c : preview)
+        if (c == '\r' || c == '\n' || c == '\t')
+            c = ' ';
+    return preview;
+}
+
+std::string httpGetPluginApi(const char *resource, const std::string &position)
+{
+    if (!resource || position.empty()) return "";
+
+    std::string pathText = std::string("/") + resource + "/" + urlEncodePathSegment(position);
+    std::wstring path = widenAscii(pathText);
+    OutputDebugStringA(("Indra APC API GET https://api-for-plugin.vercel.app" + pathText + "\n").c_str());
+
+    WinHttpHandle session(WinHttpOpen(L"IndraApc/1.0",
+                                      WINHTTP_ACCESS_TYPE_DEFAULT_PROXY,
+                                      WINHTTP_NO_PROXY_NAME,
+                                      WINHTTP_NO_PROXY_BYPASS,
+                                      0));
+    if (!session)
+    {
+        OutputDebugStringA("Indra APC API WinHttpOpen failed\n");
+        return "";
+    }
+
+    WinHttpSetTimeouts(session.get(), 2000, 3000, 3000, 3000);
+
+    WinHttpHandle connection(WinHttpConnect(session.get(),
+                                            kPluginApiHost,
+                                            kPluginApiPort,
+                                            0));
+    if (!connection)
+    {
+        OutputDebugStringA("Indra APC API WinHttpConnect failed\n");
+        return "";
+    }
+
+    WinHttpHandle request(WinHttpOpenRequest(connection.get(),
+                                             L"GET",
+                                             path.c_str(),
+                                             nullptr,
+                                             WINHTTP_NO_REFERER,
+                                             WINHTTP_DEFAULT_ACCEPT_TYPES,
+                                             WINHTTP_FLAG_SECURE));
+    if (!request)
+    {
+        OutputDebugStringA("Indra APC API WinHttpOpenRequest failed\n");
+        return "";
+    }
+
+    const wchar_t *headers =
+        L"Accept: application/json\r\n"
+        L"Accept-Encoding: identity\r\n";
+
+    if (!WinHttpSendRequest(request.get(),
+                            headers,
+                            static_cast<DWORD>(-1L),
+                            WINHTTP_NO_REQUEST_DATA,
+                            0,
+                            0,
+                            0))
+    {
+        OutputDebugStringA("Indra APC API WinHttpSendRequest failed\n");
+        return "";
+    }
+
+    if (!WinHttpReceiveResponse(request.get(), nullptr))
+    {
+        OutputDebugStringA("Indra APC API WinHttpReceiveResponse failed\n");
+        return "";
+    }
+
+    DWORD status = 0;
+    DWORD statusSize = sizeof(status);
+    if (!WinHttpQueryHeaders(request.get(),
+                             WINHTTP_QUERY_STATUS_CODE | WINHTTP_QUERY_FLAG_NUMBER,
+                             WINHTTP_HEADER_NAME_BY_INDEX,
+                             &status,
+                             &statusSize,
+                             WINHTTP_NO_HEADER_INDEX) ||
+        status != 200)
+    {
+        OutputDebugStringA(("Indra APC API HTTP status " + std::to_string(status) + "\n").c_str());
+        return "";
+    }
+
+    std::string body;
+    for (;;)
+    {
+        DWORD available = 0;
+        if (!WinHttpQueryDataAvailable(request.get(), &available) || available == 0)
+            break;
+
+        std::vector<char> buffer(available);
+        DWORD read = 0;
+        if (!WinHttpReadData(request.get(), buffer.data(), available, &read))
+        {
+            OutputDebugStringA("Indra APC API WinHttpReadData failed\n");
+            return "";
+        }
+        body.append(buffer.data(), read);
+    }
+    OutputDebugStringA(("Indra APC API received " + std::to_string(body.size()) + " bytes\n").c_str());
+    return stripUtf8Bom(body);
+}
+
+std::string fetchPluginApiData(const char *resource)
+{
+    struct ApiCacheEntry
+    {
+        std::string body;
+        ULONGLONG fetchedAt = 0;
+    };
+
+    static std::map<std::string, ApiCacheEntry> cache;
+    constexpr ULONGLONG kCacheMs = 60000;
+    if (g_activeDataPosition.empty()) return "";
+
+    std::string key = std::string(resource ? resource : "") + ":" + g_activeDataPosition;
+    auto it = cache.find(key);
+    ULONGLONG now = GetTickCount64();
+    if (it != cache.end() && now - it->second.fetchedAt < kCacheMs)
+        return it->second.body;
+
+    std::string body = httpGetPluginApi(resource, g_activeDataPosition);
+    ApiCacheEntry entry;
+    entry.body = body;
+    entry.fetchedAt = now;
+    cache[key] = entry;
+    return body;
+}
+
 nlohmann::json findPositionNode(const nlohmann::json &root, const std::string &position)
 {
     if (!root.is_object() || position.empty()) return nullptr;
@@ -270,6 +465,7 @@ ViewsParseResult parseViewsJsonText(const std::string &text)
     }
     catch (const nlohmann::json::exception &)
     {
+        OutputDebugStringA(("Indra APC views JSON parse failed. Preview: " + debugPreview(text) + "\n").c_str());
     }
 
     return result;
@@ -324,6 +520,13 @@ ContactsParseResult parseContactsJsonText(const std::string &text)
     try
     {
         nlohmann::json root = nlohmann::json::parse(text);
+        if (root.is_array())
+        {
+            result.kind = ScopedParseKind::LegacyRoot;
+            result.contacts = parseContactsArray(root);
+            return result;
+        }
+
         nlohmann::json selected = findPositionNode(root, g_activeDataPosition);
 
         // Position value is a bare array of contacts (e.g. "DAAG_APP": [{...}, ...])
@@ -358,6 +561,7 @@ ContactsParseResult parseContactsJsonText(const std::string &text)
     }
     catch (const nlohmann::json::exception &)
     {
+        OutputDebugStringA(("Indra APC contacts JSON parse failed. Preview: " + debugPreview(text) + "\n").c_str());
     }
 
     return result;
@@ -451,39 +655,34 @@ void setActiveDataPosition(const std::string &position)
 
 std::vector<ViewDef> loadViewsJson(const std::string &filename)
 {
+    (void)filename;
     if (g_activeDataPosition.empty())
         return {};
 
-    std::string modulePath = moduleDirectory() + "\\" + filename;
-    std::string dataPath = dataDirectory() + "\\" + filename;
-    std::string moduleText = readFile(modulePath);
-    std::string dataText = (_stricmp(modulePath.c_str(), dataPath.c_str()) == 0)
-        ? std::string()
-        : readFile(dataPath);
+    std::string apiText = fetchPluginApiData("views");
+    if (apiText.empty())
+        OutputDebugStringA("Indra APC views API returned an empty body\n");
 
-    ViewsParseResult moduleResult = parseViewsJsonText(moduleText);
-    ViewsParseResult dataResult = parseViewsJsonText(dataText);
-
-    if (moduleResult.kind == ScopedParseKind::ScopedMatch)
-        return moduleResult.views;
-    if (dataResult.kind == ScopedParseKind::ScopedMatch)
-        return dataResult.views;
-    if (moduleResult.kind == ScopedParseKind::ScopedNoMatch ||
-        dataResult.kind == ScopedParseKind::ScopedNoMatch)
+    ViewsParseResult apiResult = parseViewsJsonText(apiText);
+    if (apiResult.kind == ScopedParseKind::ScopedMatch ||
+        apiResult.kind == ScopedParseKind::LegacyRoot)
+    {
+        OutputDebugStringA(("Indra APC parsed " + std::to_string(apiResult.views.size()) + " views\n").c_str());
+        return apiResult.views;
+    }
+    if (apiResult.kind == ScopedParseKind::ScopedNoMatch)
+    {
+        OutputDebugStringA("Indra APC views JSON had no matching position\n");
         return {};
-    if (moduleResult.kind == ScopedParseKind::LegacyRoot)
-        return moduleResult.views;
-    if (dataResult.kind == ScopedParseKind::LegacyRoot)
-        return dataResult.views;
+    }
 
-    std::string fallbackText = !moduleText.empty() ? moduleText : dataText;
     std::vector<ViewDef> fallbackViews;
     std::size_t p = 0;
-    while ((p = fallbackText.find('{', p)) != std::string::npos)
+    while ((p = apiText.find('{', p)) != std::string::npos)
     {
-        std::size_t e = fallbackText.find('}', p + 1);
+        std::size_t e = apiText.find('}', p + 1);
         if (e == std::string::npos) break;
-        std::string obj = fallbackText.substr(p, e - p + 1);
+        std::string obj = apiText.substr(p, e - p + 1);
         ViewDef v;
         double  n = 0.0;
         jsonString(obj, "button", v.button);
@@ -494,6 +693,7 @@ std::vector<ViewDef> loadViewsJson(const std::string &filename)
         if (!v.button.empty()) fallbackViews.push_back(v);
         p = e + 1;
     }
+    OutputDebugStringA(("Indra APC fallback parsed " + std::to_string(fallbackViews.size()) + " views\n").c_str());
     return fallbackViews;
 }
 
@@ -574,46 +774,37 @@ void saveViewToJson(const std::string &button, const ViewDef &view)
 
 std::vector<Contact> loadContactsJson(const std::string &filename)
 {
+    (void)filename;
     if (g_activeDataPosition.empty())
         return {};
 
-    std::string modulePath = moduleDirectory() + "\\" + filename;
-    std::string dataPath = dataDirectory() + "\\" + filename;
-    std::string moduleText = readFile(modulePath);
-    std::string dataText = (_stricmp(modulePath.c_str(), dataPath.c_str()) == 0)
-        ? std::string()
-        : readFile(dataPath);
-
-    static std::string cachedFilename;
     static std::string cachedPosition;
-    static std::string cachedModuleText;
-    static std::string cachedDataText;
+    static std::string cachedApiText;
     static std::vector<Contact> cachedContacts;
-    if (cachedFilename == filename &&
-        cachedPosition == g_activeDataPosition &&
-        cachedModuleText == moduleText &&
-        cachedDataText == dataText)
+
+    std::string apiText = fetchPluginApiData("settings");
+    if (apiText.empty())
+        OutputDebugStringA("Indra APC settings API returned an empty body\n");
+
+    if (cachedPosition == g_activeDataPosition &&
+        cachedApiText == apiText)
         return cachedContacts;
 
-    cachedFilename = filename;
     cachedPosition = g_activeDataPosition;
-    cachedModuleText = moduleText;
-    cachedDataText = dataText;
+    cachedApiText = apiText;
 
-    ContactsParseResult moduleResult = parseContactsJsonText(moduleText);
-    ContactsParseResult dataResult = parseContactsJsonText(dataText);
-
-    if (moduleResult.kind == ScopedParseKind::ScopedMatch)
-        cachedContacts = moduleResult.contacts;
-    else if (dataResult.kind == ScopedParseKind::ScopedMatch)
-        cachedContacts = dataResult.contacts;
-    else if (moduleResult.kind == ScopedParseKind::ScopedNoMatch ||
-             dataResult.kind == ScopedParseKind::ScopedNoMatch)
-        cachedContacts.clear();
-    else if (moduleResult.kind == ScopedParseKind::LegacyRoot)
-        cachedContacts = moduleResult.contacts;
+    ContactsParseResult apiResult = parseContactsJsonText(apiText);
+    if (apiResult.kind == ScopedParseKind::ScopedMatch ||
+        apiResult.kind == ScopedParseKind::LegacyRoot)
+    {
+        cachedContacts = apiResult.contacts;
+        OutputDebugStringA(("Indra APC parsed " + std::to_string(cachedContacts.size()) + " contacts\n").c_str());
+    }
     else
-        cachedContacts = dataResult.contacts;
+    {
+        cachedContacts.clear();
+        OutputDebugStringA("Indra APC parsed 0 contacts\n");
+    }
     return cachedContacts;
 }
 

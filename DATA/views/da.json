@@ -1,0 +1,150 @@
+{
+  "DAAG_APP": {
+    "views": [
+      {
+        "button": "S",
+        "name": "View S",
+        "zoomNm": 120,
+        "centerLat": 36.692194444444,
+        "centerLon": 3.2151111111111
+      },
+      {
+        "button": "0",
+        "name": "View 0",
+        "zoomNm": 80,
+        "centerLat": 36.692194444444,
+        "centerLon": 3.2151111111111
+      },
+      {
+        "button": "1/2",
+        "name": "View 1/2",
+        "zoomNm": 60,
+        "centerLat": 36.692194444444,
+        "centerLon": 3.2151111111111
+      },
+      {
+        "button": "1",
+        "name": "View 1",
+        "zoomNm": 100,
+        "centerLat": 36.692194444444,
+        "centerLon": 3.2151111111111
+      },
+      {
+        "button": "3",
+        "name": "View 3",
+        "zoomNm": 150,
+        "centerLat": 36.692194444444,
+        "centerLon": 3.2151111111111
+      },
+      {
+        "button": "5",
+        "name": "View 5",
+        "zoomNm": 200,
+        "centerLat": 36.692194444444,
+        "centerLon": 3.2151111111111
+      },
+      {
+        "button": "8",
+        "name": "View 8",
+        "zoomNm": 250,
+        "centerLat": 36.692194444444,
+        "centerLon": 3.2151111111111
+      },
+      {
+        "button": "VIEW1",
+        "name": "View 1",
+        "zoomNm": 120,
+        "centerLat": 36.692194444444,
+        "centerLon": 3.2151111111111
+      },
+      {
+        "button": "VIEW2",
+        "name": "View 2",
+        "zoomNm": 300,
+        "centerLat": 36.692194444444,
+        "centerLon": 3.2151111111111
+      }
+    ]
+  },
+    "DAAG_TWR": {
+    "views": [
+      {
+        "button": "S",
+        "name": "View S",
+        "zoomNm": 30,
+        "centerLat": 36.692194444444,
+        "centerLon": 3.2151111111111
+      },
+      {
+        "button": "0",
+        "name": "View 0",
+        "zoomNm": 15,
+        "centerLat": 36.692194444444,
+        "centerLon": 3.2151111111111
+      },
+      {
+        "button": "1/2",
+        "name": "View 1/2",
+        "zoomNm": 7,
+        "centerLat": 36.692194444444,
+        "centerLon": 3.2151111111111
+      },
+      {
+        "button": "1",
+        "name": "View 1",
+        "zoomNm": 60,
+        "centerLat": 36.692194444444,
+        "centerLon": 3.2151111111111
+      },
+      {
+        "button": "3",
+        "name": "View 3",
+        "zoomNm": 120,
+        "centerLat": 36.692194444444,
+        "centerLon": 3.2151111111111
+      },
+      {
+        "button": "5",
+        "name": "View 5",
+        "zoomNm": 240,
+        "centerLat": 36.692194444444,
+        "centerLon": 3.2151111111111
+      },
+      {
+        "button": "8",
+        "name": "View 8",
+        "zoomNm": 480,
+        "centerLat": 36.692194444444,
+        "centerLon": 3.2151111111111
+      },
+      {
+        "button": "VIEW1",
+        "name": "View 1",
+        "zoomNm": 30,
+        "centerLat": 36.692194444444,
+        "centerLon": 3.2151111111111
+      },
+      {
+        "button": "VIEW2",
+        "name": "View 2",
+        "zoomNm": 50,
+        "centerLat": 36.692194444444,
+        "centerLon": 3.2151111111111
+      }
+    ]
+  },
+    "DAAA_CTR": {
+    "views": [
+       {"button":"S","name":"View S","zoomNm":120,"centerLat":36.692194444444,"centerLon":3.2151111111111},
+{"button":"0","name":"View 0","zoomNm":80,"centerLat":36.692194444444,"centerLon":3.2151111111111},
+{"button":"1/2","name":"View 1/2","zoomNm":60,"centerLat":36.692194444444,"centerLon":3.2151111111111},
+{"button":"1","name":"View 1","zoomNm":100,"centerLat":36.692194444444,"centerLon":3.2151111111111},
+{"button":"3","name":"View 3","zoomNm":150,"centerLat":36.692194444444,"centerLon":3.2151111111111},
+{"button":"5","name":"View 5","zoomNm":200,"centerLat":36.692194444444,"centerLon":3.2151111111111},
+{"button":"8","name":"View 8","zoomNm":250,"centerLat":36.692194444444,"centerLon":3.2151111111111},
+ {"button":"VIEW1","name":"View 1","zoomNm":1500,"centerLat":29.516694444444,"centerLon":3.1306944444444},
+{"button":"VIEW2","name":"View 2","zoomNm":500,"centerLat":36.692194444444,"centerLon":3.2151111111111}
+    ]
+  }
+
+}

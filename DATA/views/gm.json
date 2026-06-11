@@ -1,0 +1,931 @@
+{
+  "GMMN_APP": {
+    "views": [
+      {
+        "button": "S",
+        "name": "View S",
+        "zoomNm": 120,
+        "centerLat": 33.624444444444,
+        "centerLon": -7.4105555555556
+      },
+      {
+        "button": "0",
+        "name": "View 0",
+        "zoomNm": 80,
+        "centerLat": 33.624444444444,
+        "centerLon": -7.4105555555556
+      },
+      {
+        "button": "1/2",
+        "name": "View 1/2",
+        "zoomNm": 60,
+        "centerLat": 33.624444444444,
+        "centerLon": -7.4105555555556
+      },
+      {
+        "button": "1",
+        "name": "View 1",
+        "zoomNm": 100,
+        "centerLat": 33.624444444444,
+        "centerLon": -7.4105555555556
+      },
+      {
+        "button": "3",
+        "name": "View 3",
+        "zoomNm": 150,
+        "centerLat": 33.624444444444,
+        "centerLon": -7.4105555555556
+      },
+      {
+        "button": "5",
+        "name": "View 5",
+        "zoomNm": 200,
+        "centerLat": 33.624444444444,
+        "centerLon": -7.4105555555556
+      },
+      {
+        "button": "8",
+        "name": "View 8",
+        "zoomNm": 250,
+        "centerLat": 33.624444444444,
+        "centerLon": -7.4105555555556
+      },
+      {
+        "button": "VIEW1",
+        "name": "View 1",
+        "zoomNm": 120,
+        "centerLat": 33.624444444444,
+        "centerLon": -7.4105555555556
+      },
+      {
+        "button": "VIEW2",
+        "name": "View 2",
+        "zoomNm": 300,
+        "centerLat": 33.624444444444,
+        "centerLon": -7.4105555555556
+      }
+    ]
+  },
+    "GMMN_TWR": {
+    "views": [
+      {
+        "button": "S",
+        "name": "View S",
+        "zoomNm": 30,
+        "centerLat": 33.368416666667,
+        "centerLon": -7.5844722222222
+      },
+      {
+        "button": "0",
+        "name": "View 0",
+        "zoomNm": 15,
+        "centerLat": 33.368416666667,
+        "centerLon": -7.5844722222222
+      },
+      {
+        "button": "1/2",
+        "name": "View 1/2",
+        "zoomNm": 7,
+        "centerLat": 33.368416666667,
+        "centerLon": -7.5844722222222
+      },
+      {
+        "button": "1",
+        "name": "View 1",
+        "zoomNm": 60,
+        "centerLat": 33.368416666667,
+        "centerLon": -7.5844722222222
+      },
+      {
+        "button": "3",
+        "name": "View 3",
+        "zoomNm": 120,
+        "centerLat": 33.368416666667,
+        "centerLon": -7.5844722222222
+      },
+      {
+        "button": "5",
+        "name": "View 5",
+        "zoomNm": 240,
+        "centerLat": 33.368416666667,
+        "centerLon": -7.5844722222222
+      },
+      {
+        "button": "8",
+        "name": "View 8",
+        "zoomNm": 480,
+        "centerLat": 33.368416666667,
+        "centerLon": -7.5844722222222
+      },
+      {
+        "button": "VIEW1",
+        "name": "View 1",
+        "zoomNm": 30,
+        "centerLat": 33.368416666667,
+        "centerLon": -7.5844722222222
+      },
+      {
+        "button": "VIEW2",
+        "name": "View 2",
+        "zoomNm": 50,
+        "centerLat": 33.368416666667,
+        "centerLon": -7.5844722222222
+      }
+    ]
+  },
+     "GMMM_N_CTR": {
+    "views": [
+      {
+        "button": "S",
+        "name": "View S",
+        "zoomNm": 120,
+        "centerLat": 34.492277777778,
+        "centerLon": -7.174
+      },
+      {
+        "button": "0",
+        "name": "View 0",
+        "zoomNm": 80,
+        "centerLat": 34.492277777778,
+        "centerLon": -7.174
+      },
+      {
+        "button": "1/2",
+        "name": "View 1/2",
+        "zoomNm": 60,
+        "centerLat": 34.492277777778,
+        "centerLon": -7.174
+      },
+      {
+        "button": "1",
+        "name": "View 1",
+        "zoomNm": 100,
+        "centerLat": 34.492277777778,
+        "centerLon": -7.174
+      },
+      {
+        "button": "3",
+        "name": "View 3",
+        "zoomNm": 150,
+        "centerLat": 34.492277777778,
+        "centerLon": -7.174
+      },
+      {
+        "button": "5",
+        "name": "View 5",
+        "zoomNm": 200,
+        "centerLat": 34.492277777778,
+        "centerLon": -7.174
+      },
+      {
+        "button": "8",
+        "name": "View 8",
+        "zoomNm": 250,
+        "centerLat": 34.492277777778,
+        "centerLon": -7.174
+      },
+      {
+        "button": "VIEW1",
+        "name": "View 1",
+        "zoomNm": 120,
+        "centerLat": 34.492277777778,
+        "centerLon": -7.174
+      },
+      {
+        "button": "VIEW2",
+        "name": "View 2",
+        "zoomNm": 300,
+        "centerLat": 34.492277777778,
+        "centerLon": -7.174
+      }
+    ]
+  },
+  "GMMM_E_CTR": {
+    "views": [
+      {
+        "button": "S",
+        "name": "View S",
+        "zoomNm": 120,
+        "centerLat": 34.045138888889,
+        "centerLon": -4.2183333333333
+      },
+      {
+        "button": "0",
+        "name": "View 0",
+        "zoomNm": 80,
+        "centerLat": 34.045138888889,
+        "centerLon": -4.2183333333333
+      },
+      {
+        "button": "1/2",
+        "name": "View 1/2",
+        "zoomNm": 60,
+        "centerLat": 34.045138888889,
+        "centerLon": -4.2183333333333
+      },
+      {
+        "button": "1",
+        "name": "View 1",
+        "zoomNm": 100,
+        "centerLat": 34.045138888889,
+        "centerLon": -4.2183333333333
+      },
+      {
+        "button": "3",
+        "name": "View 3",
+        "zoomNm": 150,
+        "centerLat": 34.045138888889,
+        "centerLon": -4.2183333333333
+      },
+      {
+        "button": "5",
+        "name": "View 5",
+        "zoomNm": 200,
+        "centerLat": 34.045138888889,
+        "centerLon": -4.2183333333333
+      },
+      {
+        "button": "8",
+        "name": "View 8",
+        "zoomNm": 250,
+        "centerLat": 34.045138888889,
+        "centerLon": -4.2183333333333
+      },
+      {
+        "button": "VIEW1",
+        "name": "View 1",
+        "zoomNm": 120,
+        "centerLat": 34.045138888889,
+        "centerLon": -4.2183333333333
+      },
+      {
+        "button": "VIEW2",
+        "name": "View 2",
+        "zoomNm": 300,
+        "centerLat": 34.045138888889,
+        "centerLon": -4.2183333333333
+      }
+    ]},
+      "GMMM_S_CTR": {
+    "views": [
+      {
+        "button": "S",
+        "name": "View S",
+        "zoomNm": 120,
+        "centerLat": 30.852277777778,
+        "centerLon": -8.8107777777778
+      },
+      {
+        "button": "0",
+        "name": "View 0",
+        "zoomNm": 80,
+        "centerLat": 30.852277777778,
+        "centerLon": -8.8107777777778
+      },
+      {
+        "button": "1/2",
+        "name": "View 1/2",
+        "zoomNm": 60,
+        "centerLat": 30.852277777778,
+        "centerLon": -8.8107777777778
+      },
+      {
+        "button": "1",
+        "name": "View 1",
+        "zoomNm": 100,
+        "centerLat": 30.852277777778,
+        "centerLon": -8.8107777777778
+      },
+      {
+        "button": "3",
+        "name": "View 3",
+        "zoomNm": 150,
+        "centerLat": 30.852277777778,
+        "centerLon": -8.8107777777778
+      },
+      {
+        "button": "5",
+        "name": "View 5",
+        "zoomNm": 200,
+        "centerLat": 30.852277777778,
+        "centerLon": -8.8107777777778
+      },
+      {
+        "button": "8",
+        "name": "View 8",
+        "zoomNm": 250,
+        "centerLat": 30.852277777778,
+        "centerLon": -8.8107777777778
+      },
+      {
+        "button": "VIEW1",
+        "name": "View 1",
+        "zoomNm": 120,
+        "centerLat": 30.852277777778,
+        "centerLon": -8.8107777777778
+      },
+      {
+        "button": "VIEW2",
+        "name": "View 2",
+        "zoomNm": 300,
+        "centerLat": 30.852277777778,
+        "centerLon": -8.8107777777778
+      }
+    ]},
+      "GMMM_NE_CTR": {
+    "views": [
+      {
+        "button": "S",
+        "name": "View S",
+        "zoomNm": 120,
+        "centerLat": 34.045138888889,
+        "centerLon": -4.2183333333333
+      },
+      {
+        "button": "0",
+        "name": "View 0",
+        "zoomNm": 80,
+        "centerLat": 34.045138888889,
+        "centerLon": -4.2183333333333
+      },
+      {
+        "button": "1/2",
+        "name": "View 1/2",
+        "zoomNm": 60,
+        "centerLat": 34.045138888889,
+        "centerLon": -4.2183333333333
+      },
+      {
+        "button": "1",
+        "name": "View 1",
+        "zoomNm": 100,
+        "centerLat": 34.045138888889,
+        "centerLon": -4.2183333333333
+      },
+      {
+        "button": "3",
+        "name": "View 3",
+        "zoomNm": 150,
+        "centerLat": 34.045138888889,
+        "centerLon": -4.2183333333333
+      },
+      {
+        "button": "5",
+        "name": "View 5",
+        "zoomNm": 200,
+        "centerLat": 34.045138888889,
+        "centerLon": -4.2183333333333
+      },
+      {
+        "button": "8",
+        "name": "View 8",
+        "zoomNm": 250,
+        "centerLat": 34.045138888889,
+        "centerLon": -4.2183333333333
+      },
+      {
+        "button": "VIEW1",
+        "name": "View 1",
+        "zoomNm": 120,
+        "centerLat": 34.045138888889,
+        "centerLon": -4.2183333333333
+      },
+      {
+        "button": "VIEW2",
+        "name": "View 2",
+        "zoomNm": 300,
+        "centerLat": 34.045138888889,
+        "centerLon": -4.2183333333333
+      }
+    ]},
+      "GMAC_ON_CTR": {
+    "views": [
+      {
+        "button": "S",
+        "name": "View S",
+        "zoomNm": 120,
+        "centerLat": 34.841722222222,
+        "centerLon": -11.749472222222
+      },
+      {
+        "button": "0",
+        "name": "View 0",
+        "zoomNm": 80,
+        "centerLat": 34.841722222222,
+        "centerLon": -11.749472222222
+      },
+      {
+        "button": "1/2",
+        "name": "View 1/2",
+        "zoomNm": 60,
+        "centerLat": 34.841722222222,
+        "centerLon": -11.749472222222
+      },
+      {
+        "button": "1",
+        "name": "View 1",
+        "zoomNm": 100,
+        "centerLat": 34.841722222222,
+        "centerLon": -11.749472222222
+      },
+      {
+        "button": "3",
+        "name": "View 3",
+        "zoomNm": 150,
+        "centerLat": 34.841722222222,
+        "centerLon": -11.749472222222
+      },
+      {
+        "button": "5",
+        "name": "View 5",
+        "zoomNm": 200,
+        "centerLat": 34.841722222222,
+        "centerLon": -11.749472222222
+      },
+      {
+        "button": "8",
+        "name": "View 8",
+        "zoomNm": 250,
+        "centerLat": 34.841722222222,
+        "centerLon": -11.749472222222
+      },
+      {
+        "button": "VIEW1",
+        "name": "View 1",
+        "zoomNm": 120,
+        "centerLat": 34.841722222222,
+        "centerLon": -11.749472222222
+      },
+      {
+        "button": "VIEW2",
+        "name": "View 2",
+        "zoomNm": 300,
+        "centerLat": 34.841722222222,
+        "centerLon": -11.749472222222
+      }
+    ]},
+    "GMAC_OS_CTR": {
+    "views": [
+      {
+        "button": "S",
+        "name": "View S",
+        "zoomNm": 120,
+        "centerLat": 32.561972222222,
+        "centerLon": -13.710277777778
+      },
+      {
+        "button": "0",
+        "name": "View 0",
+        "zoomNm": 80,
+        "centerLat": 32.561972222222,
+        "centerLon": -13.710277777778
+      },
+      {
+        "button": "1/2",
+        "name": "View 1/2",
+        "zoomNm": 60,
+        "centerLat": 32.561972222222,
+        "centerLon": -13.710277777778
+      },
+      {
+        "button": "1",
+        "name": "View 1",
+        "zoomNm": 100,
+        "centerLat": 32.561972222222,
+        "centerLon": -13.710277777778
+      },
+      {
+        "button": "3",
+        "name": "View 3",
+        "zoomNm": 150,
+        "centerLat": 32.561972222222,
+        "centerLon": -13.710277777778
+      },
+      {
+        "button": "5",
+        "name": "View 5",
+        "zoomNm": 200,
+        "centerLat": 32.561972222222,
+        "centerLon": -13.710277777778
+      },
+      {
+        "button": "8",
+        "name": "View 8",
+        "zoomNm": 250,
+        "centerLat": 32.561972222222,
+        "centerLon": -13.710277777778
+      },
+      {
+        "button": "VIEW1",
+        "name": "View 1",
+        "zoomNm": 120,
+        "centerLat": 32.561972222222,
+        "centerLon": -13.710277777778
+      },
+      {
+        "button": "VIEW2",
+        "name": "View 2",
+        "zoomNm": 300,
+        "centerLat": 32.561972222222,
+        "centerLon": -13.710277777778
+      }
+    ]},
+        "GMAC_WN_CTR": {
+    "views": [
+      {
+        "button": "S",
+        "name": "View S",
+        "zoomNm": 120,
+        "centerLat": 34.188222222222,
+        "centerLon": -9.7490555555556
+      },
+      {
+        "button": "0",
+        "name": "View 0",
+        "zoomNm": 80,
+        "centerLat": 34.188222222222,
+        "centerLon": -9.7490555555556
+      },
+      {
+        "button": "1/2",
+        "name": "View 1/2",
+        "zoomNm": 60,
+        "centerLat": 34.188222222222,
+        "centerLon": -9.7490555555556
+      },
+      {
+        "button": "1",
+        "name": "View 1",
+        "zoomNm": 100,
+        "centerLat": 34.188222222222,
+        "centerLon": -9.7490555555556
+      },
+      {
+        "button": "3",
+        "name": "View 3",
+        "zoomNm": 150,
+        "centerLat": 34.188222222222,
+        "centerLon": -9.7490555555556
+      },
+      {
+        "button": "5",
+        "name": "View 5",
+        "zoomNm": 200,
+        "centerLat": 34.188222222222,
+        "centerLon": -9.7490555555556
+      },
+      {
+        "button": "8",
+        "name": "View 8",
+        "zoomNm": 250,
+        "centerLat": 34.188222222222,
+        "centerLon": -9.7490555555556
+      },
+      {
+        "button": "VIEW1",
+        "name": "View 1",
+        "zoomNm": 120,
+        "centerLat": 34.188222222222,
+        "centerLon": -9.7490555555556
+      },
+      {
+        "button": "VIEW2",
+        "name": "View 2",
+        "zoomNm": 300,
+        "centerLat": 34.188222222222,
+        "centerLon": -9.7490555555556
+      }
+    ]},
+            "GMAC_WS_CTR": {
+    "views": [
+      {
+        "button": "S",
+        "name": "View S",
+        "zoomNm": 120,
+        "centerLat": 32.0065,
+        "centerLon": -11.938305555556
+      },
+      {
+        "button": "0",
+        "name": "View 0",
+        "zoomNm": 80,
+        "centerLat": 32.0065,
+        "centerLon": -11.938305555556
+      },
+      {
+        "button": "1/2",
+        "name": "View 1/2",
+        "zoomNm": 60,
+        "centerLat": 32.0065,
+        "centerLon": -11.938305555556
+      },
+      {
+        "button": "1",
+        "name": "View 1",
+        "zoomNm": 100,
+        "centerLat": 32.0065,
+        "centerLon": -11.938305555556
+      },
+      {
+        "button": "3",
+        "name": "View 3",
+        "zoomNm": 150,
+        "centerLat": 32.0065,
+        "centerLon": -11.938305555556
+      },
+      {
+        "button": "5",
+        "name": "View 5",
+        "zoomNm": 200,
+        "centerLat": 32.0065,
+        "centerLon": -11.938305555556
+      },
+      {
+        "button": "8",
+        "name": "View 8",
+        "zoomNm": 250,
+        "centerLat": 32.0065,
+        "centerLon": -11.938305555556
+      },
+      {
+        "button": "VIEW1",
+        "name": "View 1",
+        "zoomNm": 120,
+        "centerLat": 32.0065,
+        "centerLon": -11.938305555556
+      },
+      {
+        "button": "VIEW2",
+        "name": "View 2",
+        "zoomNm": 300,
+        "centerLat": 32.0065,
+        "centerLon": -11.938305555556
+      }
+    ]},
+                "GMAC_W_CTR": {
+    "views": [
+      {
+        "button": "S",
+        "name": "View S",
+        "zoomNm": 120,
+        "centerLat": 33.1165,
+        "centerLon": -10.763277777778
+      },
+      {
+        "button": "0",
+        "name": "View 0",
+        "zoomNm": 80,
+        "centerLat": 33.1165,
+        "centerLon": -10.763277777778
+      },
+      {
+        "button": "1/2",
+        "name": "View 1/2",
+        "zoomNm": 60,
+        "centerLat": 33.1165,
+        "centerLon": -10.763277777778
+      },
+      {
+        "button": "1",
+        "name": "View 1",
+        "zoomNm": 100,
+        "centerLat": 33.1165,
+        "centerLon": -10.763277777778
+      },
+      {
+        "button": "3",
+        "name": "View 3",
+        "zoomNm": 150,
+        "centerLat": 33.1165,
+        "centerLon": -10.763277777778
+      },
+      {
+        "button": "5",
+        "name": "View 5",
+        "zoomNm": 200,
+        "centerLat": 33.1165,
+        "centerLon": -10.763277777778
+      },
+      {
+        "button": "8",
+        "name": "View 8",
+        "zoomNm": 250,
+        "centerLat": 33.1165,
+        "centerLon": -10.763277777778
+      },
+      {
+        "button": "VIEW1",
+        "name": "View 1",
+        "zoomNm": 120,
+        "centerLat": 33.1165,
+        "centerLon": -10.763277777778
+      },
+      {
+        "button": "VIEW2",
+        "name": "View 2",
+        "zoomNm": 300,
+        "centerLat": 33.1165,
+        "centerLon": -10.763277777778
+      }
+    ]},
+                    "GMAC_O_CTR": {
+    "views": [
+      {
+        "button": "S",
+        "name": "View S",
+        "zoomNm": 120,
+        "centerLat": 33.9935,
+        "centerLon": -12.4025
+      },
+      {
+        "button": "0",
+        "name": "View 0",
+        "zoomNm": 80,
+        "centerLat": 33.9935,
+        "centerLon": -12.4025
+      },
+      {
+        "button": "1/2",
+        "name": "View 1/2",
+        "zoomNm": 60,
+        "centerLat": 33.9935,
+        "centerLon": -12.4025
+      },
+      {
+        "button": "1",
+        "name": "View 1",
+        "zoomNm": 100,
+        "centerLat": 33.9935,
+        "centerLon": -12.4025
+      },
+      {
+        "button": "3",
+        "name": "View 3",
+        "zoomNm": 150,
+        "centerLat": 33.9935,
+        "centerLon": -12.4025
+      },
+      {
+        "button": "5",
+        "name": "View 5",
+        "zoomNm": 200,
+        "centerLat": 33.9935,
+        "centerLon": -12.4025
+      },
+      {
+        "button": "8",
+        "name": "View 8",
+        "zoomNm": 250,
+        "centerLat": 33.9935,
+        "centerLon": -12.4025
+      },
+      {
+        "button": "VIEW1",
+        "name": "View 1",
+        "zoomNm": 120,
+        "centerLat": 33.9935,
+        "centerLon": -12.4025
+      },
+      {
+        "button": "VIEW2",
+        "name": "View 2",
+        "zoomNm": 300,
+        "centerLat": 33.9935,
+        "centerLon": -12.4025
+      }
+    ]},
+      "GMMX_APP": {
+    "views": [
+      {
+        "button": "S",
+        "name": "View S",
+        "zoomNm": 120,
+        "centerLat": 31.606833333333,
+        "centerLon": -8.0366111111111
+      },
+      {
+        "button": "0",
+        "name": "View 0",
+        "zoomNm": 80,
+        "centerLat": 31.606833333333,
+        "centerLon": -8.0366111111111
+      },
+      {
+        "button": "1/2",
+        "name": "View 1/2",
+        "zoomNm": 60,
+        "centerLat": 31.606833333333,
+        "centerLon": -8.0366111111111
+      },
+      {
+        "button": "1",
+        "name": "View 1",
+        "zoomNm": 100,
+        "centerLat": 31.606833333333,
+        "centerLon": -8.0366111111111
+      },
+      {
+        "button": "3",
+        "name": "View 3",
+        "zoomNm": 150,
+        "centerLat": 31.606833333333,
+        "centerLon": -8.0366111111111
+      },
+      {
+        "button": "5",
+        "name": "View 5",
+        "zoomNm": 200,
+        "centerLat": 31.606833333333,
+        "centerLon": -8.0366111111111
+      },
+      {
+        "button": "8",
+        "name": "View 8",
+        "zoomNm": 250,
+        "centerLat": 31.606833333333,
+        "centerLon": -8.0366111111111
+      },
+      {
+        "button": "VIEW1",
+        "name": "View 1",
+        "zoomNm": 120,
+        "centerLat": 31.606833333333,
+        "centerLon": -8.0366111111111
+      },
+      {
+        "button": "VIEW2",
+        "name": "View 2",
+        "zoomNm": 300,
+        "centerLat": 31.606833333333,
+        "centerLon": -8.0366111111111
+      }
+    ]
+  },
+    "GMMX_TWR": {
+    "views": [
+      {
+        "button": "S",
+        "name": "View S",
+        "zoomNm": 30,
+        "centerLat": 31.606833333333,
+        "centerLon": -8.0366111111111
+      },
+      {
+        "button": "0",
+        "name": "View 0",
+        "zoomNm": 15,
+        "centerLat": 31.606833333333,
+        "centerLon": -8.0366111111111
+      },
+      {
+        "button": "1/2",
+        "name": "View 1/2",
+        "zoomNm": 7,
+        "centerLat": 31.606833333333,
+        "centerLon": -8.0366111111111
+      },
+      {
+        "button": "1",
+        "name": "View 1",
+        "zoomNm": 60,
+        "centerLat": 31.606833333333,
+        "centerLon": -8.0366111111111
+      },
+      {
+        "button": "3",
+        "name": "View 3",
+        "zoomNm": 120,
+        "centerLat": 31.606833333333,
+        "centerLon": -8.0366111111111
+      },
+      {
+        "button": "5",
+        "name": "View 5",
+        "zoomNm": 240,
+        "centerLat": 31.606833333333,
+        "centerLon": -8.0366111111111
+      },
+      {
+        "button": "8",
+        "name": "View 8",
+        "zoomNm": 480,
+        "centerLat": 31.606833333333,
+        "centerLon": -8.0366111111111
+      },
+      {
+        "button": "VIEW1",
+        "name": "View 1",
+        "zoomNm": 30,
+        "centerLat": 31.606833333333,
+        "centerLon": -8.0366111111111
+      },
+      {
+        "button": "VIEW2",
+        "name": "View 2",
+        "zoomNm": 50,
+        "centerLat": 31.606833333333,
+        "centerLon": -8.0366111111111
+      }
+    ]
+  }
+}

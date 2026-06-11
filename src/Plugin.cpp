@@ -10,7 +10,7 @@ class IndraApcPlugin : public EuroScopePlugIn::CPlugIn
 public:
     IndraApcPlugin()
         : CPlugIn(EuroScopePlugIn::COMPATIBILITY_CODE,
-                  kPluginName, "1.0.1",
+                  kPluginName, "1.1.3",
                   "Maghreb vACC",
                   "GPL v3")
     {
