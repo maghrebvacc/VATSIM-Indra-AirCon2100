@@ -1,119 +1,206 @@
-#include "Common.h"
-#include "Storage.h"
-#include "Screen.h"
+#include <windows.h>
+#include <objidl.h>
+#include <gdiplus.h>
 
-namespace Indra
+#pragma comment(lib, "gdiplus.lib")
+
+#include "EuroScopePlugIn.h"
+
+#include "TopSkyFunctions.h"
+
+#include "common/bar.h"
+#include "common/buttons.h"
+using namespace EuroScopePlugIn;
+using namespace Gdiplus;
+
+// Required for GDI+
+ULONG_PTR g_gdiplusToken = 0;
+
+int IsMessageOnScreen = 1;
+int IsExecutive = 1;
+int IsPlanner = 1;
+int IsFlightPlan = 1;
+
+BOOL APIENTRY DllMain(HINSTANCE hModule, DWORD reason, LPVOID)
 {
+    if (reason == DLL_PROCESS_ATTACH)
+    {
+        GdiplusStartupInput gdiplusStartupInput;
+        GdiplusStartup(&g_gdiplusToken, &gdiplusStartupInput, nullptr);
+    }
+    else if (reason == DLL_PROCESS_DETACH)
+    {
+        GdiplusShutdown(g_gdiplusToken);
+    }
 
-class IndraApcPlugin : public EuroScopePlugIn::CPlugIn
+    return TRUE;
+}
+
+void CheckMessageDraw()
+{
+    IsMessageOnScreen = 0;
+}
+
+const int ObjectExecutive = 100;
+const int ObjectPlanner = 101;
+const int ObjectFPL = 102;
+class MyRadarScreen : public CRadarScreen
 {
 public:
-    IndraApcPlugin()
-        : CPlugIn(EuroScopePlugIn::COMPATIBILITY_CODE,
-                  kPluginName, "1.1.3",
-                  "Maghreb vACC",
-                  "GPL v3")
+    MyRadarScreen() {}
+    virtual ~MyRadarScreen() {}
+
+    virtual void OnRefresh(HDC hDC, int Phase) override
     {
-        RegisterDisplayType(kDisplayName, true, true, true, true);
+        Graphics graphics(hDC);
+        DrawBarMain(hDC);
+        DrawBarMessage(hDC);
 
-        RegisterTagItemFunction("ARR Filter",      FN_ARR_FILTER);
-        RegisterTagItemFunction("DEP Filter",      FN_DEP_FILTER);
-        RegisterTagItemFunction("FPL Window",      FN_FPL_WINDOW);
-        RegisterTagItemFunction("View 1",          FN_VIEW1);
-        RegisterTagItemFunction("View 2",          FN_VIEW2);
-        RegisterTagItemFunction("Areas",           FN_AREAS);
-        RegisterTagItemFunction("RTE Toggle",      FN_RTE_TOGGLE);
-        RegisterTagItemFunction("DATBLK",          FN_DATBLK);
-        RegisterTagItemFunction("Display Toggle",  FN_DISPLAY_TOGGLE);
-        RegisterTagItemFunction("QDM Mode",        FN_QDM_MODE);
-        RegisterTagItemFunction("MTCD Toggle",     FN_MTCD_TOGGLE);
-        RegisterTagItemFunction("Alarm Toggle",    FN_ALARM_TOGGLE);
-        RegisterTagItemFunction("Sectors",         FN_SECTORS);
-        RegisterTagItemFunction("Finder",          FN_FINDER);
-        RegisterTagItemFunction("SSR F",           FN_SSRF);
-        RegisterTagItemFunction("Zoom In",         FN_ZOOM_IN);
-        RegisterTagItemFunction("Zoom Out",        FN_ZOOM_OUT);
-        RegisterTagItemFunction("Pan Up",          FN_PAN_UP);
-        RegisterTagItemFunction("Pan Down",        FN_PAN_DOWN);
-        RegisterTagItemFunction("Pan Left",        FN_PAN_LEFT);
-        RegisterTagItemFunction("Pan Right",       FN_PAN_RIGHT);
-        RegisterTagItemFunction("Save View 0",     FN_SAVE_VIEW_0);
-        RegisterTagItemFunction("Save View S",     FN_SAVE_VIEW_S);
-        RegisterTagItemFunction("Save View 1/2",   FN_SAVE_VIEW_12);
-        RegisterTagItemFunction("Save View 1",     FN_SAVE_VIEW_1);
-        RegisterTagItemFunction("Save View 3",     FN_SAVE_VIEW_3);
-        RegisterTagItemFunction("Save View 5",     FN_SAVE_VIEW_5);
-        RegisterTagItemFunction("Save View 8",     FN_SAVE_VIEW_8);
-        RegisterTagItemFunction("Load View 0",     FN_LOAD_VIEW_0);
-        RegisterTagItemFunction("Load View S",     FN_LOAD_VIEW_S);
-        RegisterTagItemFunction("Load View 1/2",   FN_LOAD_VIEW_12);
-        RegisterTagItemFunction("Load View 1",     FN_LOAD_VIEW_1);
-        RegisterTagItemFunction("Load View 3",     FN_LOAD_VIEW_3);
-        RegisterTagItemFunction("Load View 5",     FN_LOAD_VIEW_5);
-        RegisterTagItemFunction("Load View 8",     FN_LOAD_VIEW_8);
-        RegisterTagItemFunction("VACS Custom Call", FN_VACS_CUSTOM);
-    }
-
-    ~IndraApcPlugin() override {}
-
-    EuroScopePlugIn::CRadarScreen *OnRadarScreenCreated(
-        const char *displayName, bool needRadarContent,
-        bool geoReferenced, bool canBeSaved, bool canBeCreated) override
-    {
-        (void)displayName; (void)canBeSaved; (void)canBeCreated;
-        if (needRadarContent && geoReferenced)
-            return CreateIndraApcScreen();
-        return nullptr;
-    }
-
-    bool OnCompileCommand(const char *cmd) override
-    {
-        if (!startsWith(cmd, ".indra")) return false;
-        return true;
-    }
-
-    void OnFunctionCall(int functionId, const char *itemString,
-                        POINT pt, RECT area) override
-    {
-        (void)pt; (void)area;
-        if (functionId == FN_DATBLK && itemString && *itemString)
-        {
-            int n = 0;
-            if (sscanf(itemString, "Tag Family %d", &n) == 1)
-            {
-                char cmd[32];
-                snprintf(cmd, sizeof(cmd), ".tagfamily %d", n);
-                OnCompileCommand(cmd);
-            }
+        if (IsExecutive) {
+            DrawButton(hDC, 10, 870, 110, 25, "EXECUTIVE", 0, 1);
         }
-        else if (functionId == FN_FINDER && itemString && *itemString)
-        {
+        if (!IsExecutive) {
+            DrawButton(hDC, 10, 870, 110, 25, "EXECUTIVE", 1, 1);
         }
-        else if (functionId == FN_SSRF && itemString && *itemString)
+
+        if (IsPlanner) {
+            DrawButton(hDC, 10, 900, 110, 25, "PLANNER", 0, 1);
+        }
+        if (!IsPlanner) {
+            DrawButton(hDC, 10, 900, 110, 25, "PLANNER", 1, 1);
+        }
+
+        if (IsFlightPlan) {
+            DrawButton(hDC, 140, 900, 60, 25, "FPL", 0, 1);
+        }
+        if (!IsFlightPlan) {
+            DrawButton(hDC, 140, 900, 60, 25, "FPL", 1, 1);
+        }
+
+
+
+        RECT ExecutiveRECT = {};
+        ExecutiveRECT = {
+            10,
+            870,
+            10 + 100,
+            870 + 30
+        };
+        RECT PlannerRECT = {};
+        PlannerRECT = {
+            10,
+            900,
+            10 + 100,
+            900 + 30
+        };
+        RECT PlannerFPL = {};
+        PlannerFPL = {
+            140,
+            900,
+            140 + 100,
+            900 + 30
+        };
+
+        AddScreenObject(ObjectExecutive,"Executive", ExecutiveRECT,false, "Toggle Executive");
+        AddScreenObject(ObjectPlanner,"Planner", PlannerRECT,false, "Toggle Planner");
+        AddScreenObject(ObjectFPL,"FPL", PlannerFPL,false, "Toggle FPL");
+    }
+
+    virtual void OnClickScreenObject(
+        int ObjectType,
+        const char* sObjectId,
+        POINT Pt,
+        RECT Area,
+        int Button) override
+    {
+        if (ObjectType == ObjectExecutive && Button == BUTTON_LEFT)
         {
+            IsExecutive = 1 - IsExecutive;
+            RequestRefresh();
+        }
+
+        if (ObjectType == ObjectPlanner && Button == BUTTON_LEFT)
+        {
+            IsPlanner = 1 - IsPlanner;
+            RequestRefresh();
+        }
+        if (ObjectType == ObjectFPL && Button == BUTTON_LEFT)
+        {
+            IsFlightPlan = 1 - IsFlightPlan;
+            RequestRefresh();
         }
     }
 
-private:
-    static bool startsWith(const char *s, const char *prefix)
+    virtual void OnMoveScreenObject(
+        int ObjectType,
+        const char* sObjectId,
+        POINT Pt,
+        RECT Area,
+        bool Released) override
     {
-        return s && _strnicmp(s, prefix, strlen(prefix)) == 0;
+    }
+
+    virtual void OnAsrContentToBeClosed() override
+    {
     }
 };
 
-} // namespace Indra
-
-static EuroScopePlugIn::CPlugIn *g_plugin = nullptr;
-
-void __declspec(dllexport) EuroScopePlugInInit(
-    EuroScopePlugIn::CPlugIn **ppPlugInInstance)
+class MyPlugIn : public CPlugIn
 {
-    g_plugin = new Indra::IndraApcPlugin();
-    *ppPlugInInstance = g_plugin;
+    MyRadarScreen* m_Screen = nullptr;
+
+public:
+    MyPlugIn()
+        : CPlugIn(
+            COMPATIBILITY_CODE,
+            "Indra Plugin",
+            "1.0.1 B1",
+            "Jamie Datson",
+            "GPL V3")
+    {
+    }
+
+    virtual ~MyPlugIn() {}
+
+    virtual CRadarScreen* OnRadarScreenCreated(
+        const char* sDisplayName,
+        bool NeedRadarContent,
+        bool GeoReferenced,
+        bool CanBeSaved,
+        bool CanBeCreated) override
+    {
+        m_Screen = new MyRadarScreen();
+        return m_Screen;
+    }
+
+    virtual void OnRadarTargetPositionUpdate(CRadarTarget rt) override {}
+    virtual void OnFunctionCall(int FunctionId, const char* sItemString, POINT Pt, RECT Area) override {}
+    virtual void OnGetTagItem(
+        CFlightPlan FlightPlan,
+        CRadarTarget rt,
+        int ItemCode,
+        int TagData,
+        char sItemString[16],
+        int* pColorCode,
+        COLORREF* pRgbColor,
+        double* pFontSize) override
+    {
+    }
+
+    virtual void OnFlightPlanDisconnect(CFlightPlan fp) override {}
+};
+
+MyPlugIn* gPlugin = nullptr;
+
+
+__declspec(dllexport) void EuroScopePlugInInit(CPlugIn** ppPlugIn)
+{
+    gPlugin = new MyPlugIn();
+    *ppPlugIn = gPlugin;
 }
 
-void __declspec(dllexport) EuroScopePlugInExit(void)
+__declspec(dllexport) void EuroScopePlugInExit()
 {
-    delete g_plugin;
-    g_plugin = nullptr;
+    delete gPlugin;
+    gPlugin = nullptr;
 }
