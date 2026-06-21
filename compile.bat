@@ -77,5 +77,4 @@ echo  Output: %BUILD_DIR%\%BUILD_CONFIG%\IndraPlugin.dll
 echo  Copy IndraPlugin.dll to your EuroScope Plugins folder.
 echo ============================================
 echo.
-pause
 exit /b 0

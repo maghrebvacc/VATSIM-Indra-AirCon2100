@@ -1,6 +1,7 @@
 #include <windows.h>
 #include <objidl.h>
 #include <gdiplus.h>
+#include <string>
 
 #pragma comment(lib, "gdiplus.lib")
 
@@ -10,10 +11,21 @@
 
 #include "common/bar.h"
 #include "common/buttons.h"
+#include "FlighPlan/DrawFlightPlanWindow.h"
+#include "FlighPlan/GetFlightPlanData.h"
 using namespace EuroScopePlugIn;
 using namespace Gdiplus;
 
-// Required for GDI+
+/*/
+ * Dear programmer:
+ * When this was written, only god knew what it ment
+ *
+ * Therefore, if you are trying to add to to
+ * it WILL fail and i wish you the best of luck
+ *
+ * Inshallah It will work
+ */
+
 ULONG_PTR g_gdiplusToken = 0;
 
 int IsMessageOnScreen = 1;
@@ -50,9 +62,12 @@ public:
     MyRadarScreen() {}
     virtual ~MyRadarScreen() {}
 
+    std::string m_OpenedFplCallsign;
+
     virtual void OnRefresh(HDC hDC, int Phase) override
     {
         Graphics graphics(hDC);
+        if (Phase != EuroScopePlugIn::REFRESH_PHASE_AFTER_LISTS) return;
         DrawBarMain(hDC);
         DrawBarMessage(hDC);
 
@@ -73,31 +88,37 @@ public:
         if (IsFlightPlan) {
             DrawButton(hDC, 140, 900, 60, 25, "FPL", 0, 1);
         }
+
         if (!IsFlightPlan) {
             DrawButton(hDC, 140, 900, 60, 25, "FPL", 1, 1);
+            CFlightPlan fp = GetPlugIn()->FlightPlanSelect(m_OpenedFplCallsign.c_str());
+            CRadarTarget rt = fp.GetCorrelatedRadarTarget();
+            CRadarTargetPositionData rtPos = rt.IsValid() ? rt.GetPosition() : CRadarTargetPositionData();
+
+            DrawFlightPlanWindow(hDC, 100, 100, fp, rtPos, 1.15);
+            std::string rFieldStr = std::string(1, GetNavData(fp));
+            GetPlugIn()->DisplayUserMessage("Indra","Indra",rFieldStr.c_str(),true,true,true,true,true);
         }
-
-
 
         RECT ExecutiveRECT = {};
         ExecutiveRECT = {
             10,
             870,
-            10 + 100,
+            10 + 110,
             870 + 30
         };
         RECT PlannerRECT = {};
         PlannerRECT = {
             10,
             900,
-            10 + 100,
+            10 + 110,
             900 + 30
         };
         RECT PlannerFPL = {};
         PlannerFPL = {
             140,
             900,
-            140 + 100,
+            140 + 60,
             900 + 30
         };
 
@@ -126,6 +147,12 @@ public:
         }
         if (ObjectType == ObjectFPL && Button == BUTTON_LEFT)
         {
+            if (IsFlightPlan)
+            {
+                CFlightPlan asel = GetPlugIn()->FlightPlanSelectASEL();
+                m_OpenedFplCallsign = asel.IsValid() ? asel.GetCallsign() : "";
+            }
+
             IsFlightPlan = 1 - IsFlightPlan;
             RequestRefresh();
         }

@@ -1,8 +1,6 @@
-//
-// Created by jamie on 20/06/2026.
-//
+#pragma once
 
-#ifndef INDRA_PLUGIN_VATSIM_DRAWFLIGHTPLANWINDOW_H
-#define INDRA_PLUGIN_VATSIM_DRAWFLIGHTPLANWINDOW_H
+#include <windows.h>
+#include "EuroScopePlugIn.h"
 
-#endif //INDRA_PLUGIN_VATSIM_DRAWFLIGHTPLANWINDOW_H
+void DrawFlightPlanWindow(HDC hdc,int ox,int oy, EuroScopePlugIn::CFlightPlan fp, EuroScopePlugIn::CRadarTargetPositionData rtPos, double scale);
