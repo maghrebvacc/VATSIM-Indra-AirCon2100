@@ -1,10 +1,22 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="17.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
-    <ClCompile Include="E:\Indra V2\src\FlighPlan\DrawFlightPlanWindow.cpp">
+    <ClCompile Include="E:\Indra V2\src\Bright\DrawBrightWindow.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="E:\Indra V2\src\FlighPlan\GetFlightPlanData.cpp">
+    <ClCompile Include="E:\Indra V2\src\FlighPlan\DrawWindow\DrawFlightPlanWindow.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="E:\Indra V2\src\FlighPlan\DrawWindow\Modify\DrawModifyFlightPlanWindow.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="E:\Indra V2\src\FlighPlan\DrawWindow\View\DrawViewFlightPlanWindow.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="E:\Indra V2\src\FlighPlan\Get\GetFlightPlanData.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="E:\Indra V2\src\FlighPlan\Modify\ModifyFlightPlan.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="E:\Indra V2\src\common\bar.cpp">
@@ -24,10 +36,22 @@
     <ClInclude Include="E:\Indra V2\src\common\bar.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="E:\Indra V2\src\FlighPlan\GetFlightPlanData.h">
+    <ClInclude Include="E:\Indra V2\src\FlighPlan\Get\GetFlightPlanData.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="E:\Indra V2\src\FlighPlan\DrawFlightPlanWindow.h">
+    <ClInclude Include="E:\Indra V2\src\FlighPlan\DrawWindow\DrawFlightPlanWindow.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="E:\Indra V2\src\FlighPlan\Modify\ModifyFlightPlan.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="E:\Indra V2\src\Bright\DrawBrightWindow.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="E:\Indra V2\src\FlighPlan\DrawWindow\View\DrawViewFlightPlanWindow.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="E:\Indra V2\src\FlighPlan\DrawWindow\Modify\DrawModifyFlightPlanWindow.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

@@ -6,7 +6,7 @@
 std::string GetCallsign(EuroScopePlugIn::CFlightPlan fp);
 
 // Single capability/equipment character (NOT the ICAO type string).
-char GetAircraftType(EuroScopePlugIn::CFlightPlan fp);
+std::string GetAircraftType(EuroScopePlugIn::CFlightPlan fp);
 
 // ICAO aircraft type string, e.g. "B738". Use this for display fields.
 std::string GetAircraftFPType(EuroScopePlugIn::CFlightPlan fp);

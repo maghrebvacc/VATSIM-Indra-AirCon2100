@@ -373,15 +373,23 @@ if %errorlevel% neq 0 goto :VCEnd</Command>
     </CustomBuild>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="E:\Indra V2\src\FlighPlan\DrawFlightPlanWindow.cpp" />
-    <ClCompile Include="E:\Indra V2\src\FlighPlan\GetFlightPlanData.cpp" />
+    <ClCompile Include="E:\Indra V2\src\Bright\DrawBrightWindow.cpp" />
+    <ClCompile Include="E:\Indra V2\src\FlighPlan\DrawWindow\DrawFlightPlanWindow.cpp" />
+    <ClCompile Include="E:\Indra V2\src\FlighPlan\DrawWindow\Modify\DrawModifyFlightPlanWindow.cpp" />
+    <ClCompile Include="E:\Indra V2\src\FlighPlan\DrawWindow\View\DrawViewFlightPlanWindow.cpp" />
+    <ClCompile Include="E:\Indra V2\src\FlighPlan\Get\GetFlightPlanData.cpp" />
+    <ClCompile Include="E:\Indra V2\src\FlighPlan\Modify\ModifyFlightPlan.cpp" />
     <ClCompile Include="E:\Indra V2\src\common\bar.cpp" />
     <ClCompile Include="E:\Indra V2\src\common\buttons.cpp" />
     <ClCompile Include="E:\Indra V2\src\plugin.cpp" />
     <ClInclude Include="E:\Indra V2\src\common\buttons.h" />
     <ClInclude Include="E:\Indra V2\src\common\bar.h" />
-    <ClInclude Include="E:\Indra V2\src\FlighPlan\GetFlightPlanData.h" />
-    <ClInclude Include="E:\Indra V2\src\FlighPlan\DrawFlightPlanWindow.h" />
+    <ClInclude Include="E:\Indra V2\src\FlighPlan\Get\GetFlightPlanData.h" />
+    <ClInclude Include="E:\Indra V2\src\FlighPlan\DrawWindow\DrawFlightPlanWindow.h" />
+    <ClInclude Include="E:\Indra V2\src\FlighPlan\Modify\ModifyFlightPlan.h" />
+    <ClInclude Include="E:\Indra V2\src\Bright\DrawBrightWindow.h" />
+    <ClInclude Include="E:\Indra V2\src\FlighPlan\DrawWindow\View\DrawViewFlightPlanWindow.h" />
+    <ClInclude Include="E:\Indra V2\src\FlighPlan\DrawWindow\Modify\DrawModifyFlightPlanWindow.h" />
   </ItemGroup>
   <ItemGroup />
   <ItemGroup>

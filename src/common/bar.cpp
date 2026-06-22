@@ -15,7 +15,7 @@ void DrawBarMain(HDC hDC)
 
     Gdiplus::SolidBrush brush(Gdiplus::Color(255, 68, 68, 68));
 
-    graphics.FillRectangle(&brush, 100, 860, 1820, 110);
+    graphics.FillRectangle(&brush, 100, 840, 1820, 110);
 }
 
 void DrawBarMessage(HDC hDC) {
@@ -23,7 +23,7 @@ void DrawBarMessage(HDC hDC) {
 
     Gdiplus::SolidBrush brush(Gdiplus::Color(255, 68, 68, 68));
 
-    graphics.FillRectangle(&brush, 0, 860, 100, 110);
+    graphics.FillRectangle(&brush, 0, 840, 100, 110);
 }
 
 void RemoveBarMessage(HDC hDC) {

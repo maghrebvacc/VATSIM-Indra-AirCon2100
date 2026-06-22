@@ -16,10 +16,18 @@ add_library(IndraPlugin SHARED ${SOURCES}
         src/common/buttons.h
         src/common/bar.cpp
         src/common/bar.h
-        src/FlighPlan/GetFlightPlanData.cpp
-        src/FlighPlan/DrawFlightPlanWindow.cpp
-        src/FlighPlan/GetFlightPlanData.h
-        src/FlighPlan/DrawFlightPlanWindow.h)
+        src/FlighPlan/Get/GetFlightPlanData.cpp
+        src/FlighPlan/DrawWindow/DrawFlightPlanWindow.cpp
+        src/FlighPlan/Get/GetFlightPlanData.h
+        src/FlighPlan/DrawWindow/DrawFlightPlanWindow.h
+        src/FlighPlan/Modify/ModifyFlightPlan.cpp
+        src/FlighPlan/Modify/ModifyFlightPlan.h
+        src/Bright/DrawBrightWindow.cpp
+        src/Bright/DrawBrightWindow.h
+        src/FlighPlan/DrawWindow/View/DrawViewFlightPlanWindow.cpp
+        src/FlighPlan/DrawWindow/View/DrawViewFlightPlanWindow.h
+        src/FlighPlan/DrawWindow/Modify/DrawModifyFlightPlanWindow.cpp
+        src/FlighPlan/DrawWindow/Modify/DrawModifyFlightPlanWindow.h)
 
 target_link_libraries(IndraPlugin ws2_32 comctl32 EuroScopePlugInDll)
 

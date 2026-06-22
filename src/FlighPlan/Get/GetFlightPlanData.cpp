@@ -13,27 +13,20 @@ std::string GetCallsign(CFlightPlan fp) {
     return fp.GetCallsign();
 }
 
-// GetAircraftType() returns a single capability/equipment character, NOT the
-// ICAO aircraft type string (e.g. "B738"). Kept as-is in case other code
-// already depends on this single-char value.
-char GetAircraftType(CFlightPlan fp) {
+std::string GetAircraftType(CFlightPlan fp) {
     if (!fp.IsValid())
         return '\0';
 
     CFlightPlanData fpData = fp.GetFlightPlanData();
-    return fpData.GetAircraftType();
+    return fpData.GetAircraftInfo();
 }
 
-// GetAircraftFPType() returns the actual filed ICAO aircraft type string
-// (e.g. "B738", "A320"). This is what DrawFlightPlanWindow.cpp needs for
-// the "A/C" field — it did not exist in the original file, which is why
-// the draw code failed to compile/link.
 std::string GetAircraftFPType(CFlightPlan fp) {
     if (!fp.IsValid())
         return "";
 
     CFlightPlanData fpData = fp.GetFlightPlanData();
-    return fpData.GetAircraftFPType();
+    return fpData.GetPlanType();
 }
 
 char GetWakeCatagory(CFlightPlan fp) {
@@ -115,11 +108,6 @@ std::string GetStar(CFlightPlan fp) {
     return fpData.GetStarName();
 }
 
-// GetEstimatedDepartureTime()/GetActualDepartureTime() return const char*
-// pointing into an SDK-owned buffer that can be invalidated/overwritten on
-// the next call. DrawFlightPlanWindow.cpp calls GetEOBT(fp).c_str() and
-// GetATD(fp).c_str() — that requires std::string, not const char*, both to
-// compile and to be safe. Fixed both return types.
 std::string GetEOBT(CFlightPlan fp) {
     if (!fp.IsValid())
         return "";
